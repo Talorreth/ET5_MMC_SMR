@@ -257,8 +257,22 @@ export default function SimulationPanel({ island, onClose }) {
                  <h4 className="font-bold text-xs text-indigo-600 uppercase mb-3 border-b pb-1">{themeData.subject}</h4>
                  {criteriaList.filter(c => c.Thématique === themeData.subject).map(crit => (
                     <div key={crit.Code} className="mb-3 last:mb-0">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-600 truncate w-3/4">{crit.Critère}</span>
+                      {/* NOUVEAU CODE AVEC TOOLTIP */}
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <div className="flex items-center gap-1 w-3/4">
+                          <span className="text-slate-700 font-medium truncate" title={crit.Critère}>
+                            {crit.Code} - {crit.Critère}
+                          </span>
+                          {/* Icône Info avec Tooltip natif simple */}
+                          {crit.Explications && (
+                            <div className="group relative">
+                              <Info size={12} className="text-blue-400 cursor-help" />
+                              <div className="absolute left-4 bottom-0 w-64 p-2 bg-slate-800 text-white text-[10px] rounded shadow-lg z-50 hidden group-hover:block pointer-events-none">
+                                {crit.Explications}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                         <span className={`font-mono font-bold ${scores[crit.Code] < 2 ? 'text-red-500' : 'text-slate-700'}`}>
                           {scores[crit.Code]}/5
                         </span>

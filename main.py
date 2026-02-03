@@ -93,9 +93,18 @@ def get_islands():
 
 @app.get("/criteria")
 def get_criteria():
-    """Renvoie la liste des Criteres (Code, Nom, Thematique) pour l'UI"""
-    # On prend le fichier SMR comme référence pour les Criteres
-    df = df_smr_global[['Code', 'Critere', 'Thematique', 'Inclure_ranking_SMR (0/1)']]
+    """Renvoie la liste des Criteres (Code, Nom, Thématique, Explications) pour l'UI"""
+    # CORRECTION ICI : Ajout de 'Explications'
+    cols_to_keep = ['Code', 'Critere', 'Thématique', 'Inclure_ranking_SMR (0/1)', 'Explications']
+    
+    # On vérifie que les colonnes existent (pour éviter un crash si le CSV est vieux)
+    actual_cols = [c for c in cols_to_keep if c in df_smr_global.columns]
+    
+    df = df_smr_global[actual_cols].copy()
+    
+    # On remplace les NaN (vides) par une chaine vide pour le JSON
+    df['Explications'] = df['Explications'].fillna("")
+    
     return df.to_dict(orient="records")
 
 @app.post("/calculate", response_model=CalculationResponse)
