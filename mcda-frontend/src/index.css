@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS obligatoire pour que la carte s'affiche */
+.leaflet-container {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    background-color: #f3f4f6; /* Gris très clair */
+}
