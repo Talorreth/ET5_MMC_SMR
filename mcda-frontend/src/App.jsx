@@ -56,7 +56,7 @@ function App() {
            : 'bg-red-500/10 border-red-500/20 text-red-800'
         }`}>
            <div className={`w-2 h-2 rounded-full ${apiStatus === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
-           {apiStatus === 'online' ? 'Moteur IA Connecté' : 'Serveur Déconnecté'}
+           {apiStatus === 'online' ? 'Connecté' : 'Serveur Déconnecté'}
         </div>
       </div>
 
