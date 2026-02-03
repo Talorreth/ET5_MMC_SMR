@@ -34,7 +34,7 @@ def load_data():
         meta_cols = ['Thematique', 'Code', 'Critere', 'Explications', 'Inclure_ranking_SMR (0/1)', 'Justification / source']
         smr_cols = [c for c in df_smr.columns if c not in meta_cols]
         
-        # 2. Chargement des profils îles
+        # 2. Chargement des profils iles
         profiles = {}
         files = {
             "indonesie": "profil_indonesie.csv",
@@ -83,19 +83,19 @@ def read_root():
 
 @app.get("/islands")
 def get_islands():
-    """Renvoie la liste des îles disponibles et leurs scores initiaux"""
+    """Renvoie la liste des iles disponibles et leurs scores initiaux"""
     data = {}
     for island_id, df in profiles_global.items():
         # Convertit le DataFrame en dictionnaire simple {Code: Score}
-        scores = dict(zip(df['Code'], df['Score île (0-5)']))
+        scores = dict(zip(df['Code'], df['Score ile (0-5)']))
         data[island_id] = scores
     return data
 
 @app.get("/criteria")
 def get_criteria():
-    """Renvoie la liste des critères (Code, Nom, Thématique) pour l'UI"""
-    # On prend le fichier SMR comme référence pour les critères
-    df = df_smr_global[['Code', 'Critère', 'Thématique', 'Inclure_ranking_SMR (0/1)']]
+    """Renvoie la liste des Criteres (Code, Nom, Thematique) pour l'UI"""
+    # On prend le fichier SMR comme référence pour les Criteres
+    df = df_smr_global[['Code', 'Critere', 'Thematique', 'Inclure_ranking_SMR (0/1)']]
     return df.to_dict(orient="records")
 
 @app.post("/calculate", response_model=CalculationResponse)
@@ -104,7 +104,7 @@ def calculate(req: CalculationRequest):
     Cœur du réacteur : Recalcule le classement en fonction des inputs
     """
     if req.island_id not in profiles_global:
-        raise HTTPException(status_code=404, detail="Île inconnue")
+        raise HTTPException(status_code=404, detail="ile inconnue")
 
     # 1. Récupération du profil de base
     df_ile = profiles_global[req.island_id].copy()
@@ -113,13 +113,13 @@ def calculate(req: CalculationRequest):
     if req.overrides:
         for code, new_score in req.overrides.items():
             # Mise à jour du score dans la ligne correspondante
-            df_ile.loc[df_ile['Code'] == code, 'Score île (0-5)'] = new_score
+            df_ile.loc[df_ile['Code'] == code, 'Score ile (0-5)'] = new_score
 
-    # 3. Préparation des données SMR (Filtre des critères actifs)
-    # On ne garde que les critères marqués "1" dans Inclure_ranking
+    # 3. Préparation des données SMR (Filtre des Criteres actifs)
+    # On ne garde que les Criteres marqués "1" dans Inclure_ranking
     active_criteria_codes = df_smr_global[df_smr_global['Inclure_ranking_SMR (0/1)'] == 1]['Code'].tolist()
     
-    # Fusionner Profil Île + Scores SMR
+    # Fusionner Profil ile + Scores SMR
     # On merge sur 'Code'
     df_merged = pd.merge(
         df_ile, 
@@ -128,27 +128,27 @@ def calculate(req: CalculationRequest):
         how='inner'
     )
     
-    # Filtrer pour ne garder que les critères actifs pour le calcul
+    # Filtrer pour ne garder que les Criteres actifs pour le calcul
     df_calc = df_merged[df_merged['Code'].isin(active_criteria_codes)].copy()
 
     # 4. Calculs des Poids (Logique Excel)
     # Besoin = (5 - Score) / 5
-    df_calc['Besoin'] = (5 - df_calc['Score île (0-5)']) / 5
+    df_calc['Besoin'] = (5 - df_calc['Score ile (0-5)']) / 5
     
     # Poids Ajusté = Poids_base * (Alpha + (1-Alpha) * Besoin)
     df_calc['Poids_ajusté'] = df_calc['Poids base'] * (req.alpha + (1 - req.alpha) * df_calc['Besoin'])
     
     # 5. Détection Hard No-Go
-    # On vérifie sur TOUS les critères fusionnés (même ceux exclus du ranking s'ils sont critiques ?)
-    # Par sécurité, on vérifie sur df_merged (tous les critères dispos)
+    # On vérifie sur TOUS les Criteres fusionnés (même ceux exclus du ranking s'ils sont critiques ?)
+    # Par sécurité, on vérifie sur df_merged (tous les Criteres dispos)
     is_nogo = False
     reasons = []
     
     for _, row in df_merged.iterrows():
         if row['Code'] in CRITERES_NO_GO:
-            if row['Score île (0-5)'] < SEUIL_NO_GO:
+            if row['Score ile (0-5)'] < SEUIL_NO_GO:
                 is_nogo = True
-                reasons.append(f"{row['Critère']} (Score: {row['Score île (0-5)']})")
+                reasons.append(f"{row['Critere']} (Score: {row['Score ile (0-5)']})")
 
     # 6. Calcul des Scores SMR
     ranking = []
@@ -174,6 +174,34 @@ def calculate(req: CalculationRequest):
         nogo_reasons=reasons,
         ranking=ranking
     )
+
+@app.get("/smrs")
+def get_smr_profiles():
+    """
+    Renvoie les scores bruts (0-5) de tous les SMR pour l'affichage radar.
+    """
+    # On filtre les colonnes non-pertinentes
+    # On veut un dict : { "Nuward": { "GS": 5, "ECO1": 3... }, ... }
+    
+    # 1. Identifier les colonnes SMR (celles qui sont dans smr_list_global)
+    # et la colonne 'Code'
+    cols_to_keep = ['Code'] + smr_list_global
+    
+    # 2. Créer le dictionnaire
+    smr_data = {}
+    
+    # Pour chaque SMR, on construit son profil
+    for smr in smr_list_global:
+        # On crée une map {Code_Critere: Score}
+        # Attention: il faut gérer les valeurs NaN
+        scores = dict(zip(
+            df_smr_global['Code'], 
+            pd.to_numeric(df_smr_global[smr], errors='coerce').fillna(0)
+        ))
+        smr_data[smr] = scores
+        
+    return smr_data
+
 
 if __name__ == "__main__":
     import uvicorn
