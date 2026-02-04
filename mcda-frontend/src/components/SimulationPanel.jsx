@@ -26,10 +26,10 @@ const BAR_COLORS = ['#3b82f6', '#64748b', '#94a3b8', '#cbd5e1'];
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white p-3 border border-slate-100 shadow-xl rounded-lg text-sm">
-        <p className="font-bold text-slate-800 mb-1">{label}</p>
+      <div className="bg-slate-950 p-3 border border-cyan-500/30 shadow-xl rounded-lg text-sm">
+        <p className="font-bold text-cyan-400 mb-1">{label}</p>
         {payload.map((entry, index) => (
-          <p key={index} style={{ color: entry.color }} className="flex items-center gap-2">
+          <p key={index} style={{ color: entry.color }} className="flex items-center gap-2 text-slate-100">
             <span className="w-2 h-2 rounded-full" style={{ background: entry.color }}></span>
             {entry.name}: <span className="font-mono font-bold">{entry.value}</span>
           </p>
@@ -110,186 +110,219 @@ export default function SimulationPanel({ island, onClose }) {
   const toggleTheme = (theme) => setOpenTheme(openTheme === theme ? null : theme);
 
   return (
-    <div className="flex flex-col h-full w-full bg-white text-slate-800 font-sans relative">
+    <div className="simulation-panel-wrapper flex flex-col h-full w-full bg-slate-900 text-white font-sans relative overflow-hidden">
       
-      {/* HEADER FIXE */}
-      <div className="px-8 py-6 border-b border-slate-100 bg-white/95 backdrop-blur z-20 flex justify-between items-start">
+      {/* HEADER FIXE - Dark mode avec accents cyan */}
+      <div className="px-6 py-5 border-b border-cyan-500/20 bg-slate-950/80 backdrop-blur-xl z-20 flex justify-between items-start shadow-lg">
         <div>
-          <div className="flex items-center gap-2 text-blue-600 mb-1">
-            <MapPin size={18} />
-            <span className="text-xs font-bold uppercase tracking-wider">Site Pilote</span>
+          <div className="flex items-center gap-2 text-cyan-400 mb-2">
+            <MapPin size={16} className="flex-shrink-0" />
+            <span className="text-xs font-bold uppercase tracking-wider">📍 Site Pilote</span>
           </div>
-          <h2 className="text-3xl font-extrabold text-slate-900">{island.name}</h2>
+          <h2 className="text-3xl font-bold text-white leading-tight">{island.name}</h2>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition text-slate-400 hover:text-slate-600">✕</button>
+        <button onClick={onClose} className="p-2.5 hover:bg-slate-800 active:bg-slate-700 rounded-lg transition-all text-slate-400 hover:text-cyan-400 hover:scale-110 duration-200 group">
+          <svg className="w-6 h-6 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-10">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
 
         {/* SECTION 1: RADAR & ACTION */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Radar Card */}
-            <div className="lg:col-span-2 bg-slate-50 rounded-2xl p-6 border border-slate-100 relative shadow-sm">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                        <Activity size={18} className="text-blue-500"/>
+            <div className="lg:col-span-2 bg-slate-800/50 rounded-2xl p-6 border border-cyan-500/20 relative shadow-md hover:shadow-lg hover:border-cyan-500/40 transition-all duration-300">
+                <div className="flex justify-between items-center mb-5">
+                    <h3 className="font-bold text-white text-base flex items-center gap-2">
+                        <div className="p-1.5 bg-cyan-500/20 rounded-lg border border-cyan-500/30">
+                            <Activity size={18} className="text-cyan-400"/>
+                        </div>
                         Analyse de Vulnérabilité
                     </h3>
                     {selectedSmr && (
-                        <span className="text-xs font-bold bg-orange-100 text-orange-700 px-2 py-1 rounded-full border border-orange-200">
-                           VS {selectedSmr}
+                        <span className="text-xs font-bold bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded-full border border-cyan-500/40">
+                           {selectedSmr}
                         </span>
                     )}
                 </div>
-                <div className="h-[300px] w-full">
+                <div className="h-80 w-full bg-slate-900/50 rounded-xl p-3 border border-cyan-500/10">
                     {radarData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                         <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                            <PolarGrid stroke="#e2e8f0" />
-                            <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} />
+                            <PolarGrid stroke="#0e7490" strokeDasharray="3" />
+                            <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: '#a1f5ff', fontWeight: 500 }} />
                             <PolarRadiusAxis angle={30} domain={[0, 5]} tick={false} axisLine={false} />
-                            <Radar name="Site" dataKey="island" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} />
-                            {selectedSmr && <Radar name={selectedSmr} dataKey="smr" stroke="#f97316" fill="#f97316" fillOpacity={0.4} />}
+                            <Radar name="Site" dataKey="island" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.15} strokeWidth={2.5} />
+                            {selectedSmr && <Radar name={selectedSmr} dataKey="smr" stroke="#f97316" fill="#f97316" fillOpacity={0.2} strokeWidth={2.5} />}
                             <Tooltip content={<CustomTooltip />} />
-                            <Legend />
+                            <Legend wrapperStyle={{ paddingTop: '15px', fontSize: '12px', color: '#a1f5ff' }} />
                         </RadarChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="flex items-center justify-center h-full text-slate-400">Chargement...</div>
+                        <div className="flex items-center justify-center h-full text-slate-500">
+                            <div className="text-center">
+                                <Activity className="mx-auto mb-2 animate-spin opacity-20" size={28} />
+                                <p className="text-sm">Chargement...</p>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
 
             {/* Action Card */}
-            <div className="flex flex-col gap-4">
-                <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-xl flex flex-col justify-between h-full">
+            <div className="flex flex-col gap-3">
+                <div className="bg-gradient-to-br from-cyan-600 to-blue-700 text-white rounded-2xl p-6 shadow-lg shadow-cyan-500/20 flex flex-col justify-between h-full hover:shadow-cyan-500/30 transition-shadow duration-300 border border-cyan-500/30">
                     <div>
-                        <h4 className="font-bold text-lg mb-2">Simulation</h4>
-                        <p className="text-slate-400 text-sm mb-6">Lancez l'algorithme MCDA pour classer les 16 technologies SMR.</p>
+                        <h4 className="font-bold text-sm mb-2">Simulation MCDA</h4>
+                        <p className="text-cyan-100/70 text-xs leading-relaxed">Classement des 16 technologies SMR</p>
                     </div>
                     <button 
                         onClick={handleCalculate}
                         disabled={loading}
-                        className="w-full bg-blue-500 hover:bg-blue-400 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-blue-500/25 flex justify-center items-center gap-2"
+                        className="w-full bg-white text-cyan-700 hover:bg-cyan-50 disabled:bg-slate-600 disabled:text-white font-bold py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg flex justify-center items-center gap-2 text-sm disabled:cursor-not-allowed"
                     >
-                        {loading ? "Calcul..." : <><Play size={20} fill="currentColor"/> Lancer</>}
+                        {loading ? (
+                            <><Activity size={16} className="animate-spin"/> Calcul...</>
+                        ) : (
+                            <><Play size={16} fill="currentColor"/> Lancer</>
+                        )}
                     </button>
                 </div>
-                <button onClick={handleReset} className="w-full bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 py-3 rounded-xl font-medium flex justify-center items-center gap-2 transition">
-                    <RotateCcw size={16}/> Reset Paramètres
+                <button onClick={handleReset} className="w-full bg-slate-800 border-2 border-cyan-500/30 text-cyan-300 hover:bg-slate-700 hover:border-cyan-500/60 py-2.5 rounded-lg font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md text-sm">
+                    <RotateCcw size={16}/> Réinitialiser
                 </button>
             </div>
         </div>
 
         {/* SECTION 2: RÉSULTATS */}
         {results && (
-          <div className="animate-fade-in border-t border-slate-100 pt-8">
-            <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <IconBarChart className="text-blue-600"/> Résultats & Classement
+          <div className="animate-fade-in border-t border-cyan-500/20 pt-6">
+            <h3 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
+                <div className="p-1.5 bg-cyan-500/20 rounded-lg border border-cyan-500/30">
+                    <IconBarChart size={18} className="text-cyan-400"/>
+                </div>
+                Résultats & Classement
             </h3>
 
             {/* Status Banner */}
-            <div className={`p-4 rounded-xl border mb-6 flex items-start gap-4 ${results.is_nogo ? 'bg-red-50 border-red-100 text-red-900' : 'bg-emerald-50 border-emerald-100 text-emerald-900'}`}>
-                <div className={`p-2 rounded-full ${results.is_nogo ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                    {results.is_nogo ? <AlertTriangle size={24}/> : <CheckCircle size={24}/>}
+            <div className={`p-4 rounded-xl border-2 mb-5 flex items-start gap-3 shadow-sm transition-all ${results.is_nogo ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'}`}>
+                <div className={`p-2 rounded-lg flex-shrink-0 ${results.is_nogo ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                    {results.is_nogo ? <AlertTriangle size={20}/> : <CheckCircle size={20}/>}
                 </div>
                 <div>
-                    <h4 className="font-bold text-lg">{results.is_nogo ? "Projet Critique (No-Go)" : "Projet Viable"}</h4>
-                    <p className="text-sm opacity-90 mt-1">
+                    <h4 className="font-bold text-sm mb-1">{results.is_nogo ? "Projet Critique (No-Go)" : "Projet Viable"}</h4>
+                    <p className="text-xs opacity-75 leading-snug">
                         {results.is_nogo 
-                            ? `Le site présente des contraintes bloquantes : ${results.nogo_reasons.join(", ")}` 
-                            : "Tous les critères d'exclusion (Hard No-Go) sont respectés."}
+                            ? `Contraintes bloquantes : ${results.nogo_reasons.join(", ")}` 
+                            : "Tous les critères d'exclusion sont respectés."}
                     </p>
                 </div>
             </div>
 
             {/* Chart */}
-            <div className="h-[400px] bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
-                <ResponsiveContainer width="100%" height="100%">
+            <div className="rounded-xl border border-cyan-500/20 p-4 shadow-md bg-slate-800/30 hover:shadow-lg transition-shadow">
+                <ResponsiveContainer width="100%" height={320}>
                 <BarChart 
                     data={results.ranking.slice(0, 12)} 
                     layout="vertical" 
-                    margin={{ left: 10, right: 30 }}
+                    margin={{ left: 110, right: 20, top: 5, bottom: 5 }}
                     onClick={(data) => data?.activePayload && setSelectedSmr(data.activePayload[0].payload.technologie)}
                     className="cursor-pointer"
                 >
-                    <XAxis type="number" domain={[0, 5]} hide />
-                    <YAxis dataKey="technologie" type="category" width={160} tick={{fontSize: 12, fontWeight: 600, fill: '#475569'}} />
-                    <Tooltip content={<CustomTooltip />} cursor={{fill: '#f1f5f9'}} />
-                    <Bar dataKey="score" radius={[0, 6, 6, 0]} barSize={24}>
+                    <XAxis type="number" domain={[0, 5]} stroke="#0e7490" hide />
+                    <YAxis dataKey="technologie" type="category" width={105} tick={{fontSize: 11, fontWeight: 500, fill: '#a1f5ff'}} />
+                    <Tooltip content={<CustomTooltip />} cursor={{fill: '#0e7490'}} />
+                    <Bar dataKey="score" radius={[0, 8, 8, 0]} barSize={22}>
                     {results.ranking.map((entry, index) => (
                         <Cell 
                         key={`cell-${index}`} 
                         fill={entry.technologie === selectedSmr ? '#f97316' : BAR_COLORS[index % BAR_COLORS.length]} 
-                        className="transition-all duration-300"
+                        className="transition-all duration-300 hover:opacity-80"
                         />
                     ))}
                     </Bar>
                 </BarChart>
                 </ResponsiveContainer>
-                <p className="text-center text-xs text-slate-400 mt-2 flex justify-center items-center gap-1">
-                    <Info size={12}/> Cliquez sur une barre pour comparer sur le radar
+                <p className="text-center text-xs text-cyan-300/60 mt-2 flex justify-center items-center gap-1 font-medium">
+                    <Info size={12}/> Cliquez pour comparer
                 </p>
             </div>
           </div>
         )}
 
         {/* SECTION 3: PARAMÈTRES (ACCORDÉON) */}
-        <div className="border-t border-slate-100 pt-8 pb-20">
-          <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <SlidersHorizontal className="text-blue-600"/> Configuration
+        <div className="border-t border-cyan-500/20 pt-6 pb-20">
+          <h3 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
+            <div className="p-1.5 bg-cyan-500/20 rounded-lg border border-cyan-500/30">
+                <SlidersHorizontal size={18} className="text-cyan-400"/>
+            </div>
+            Configuration
           </h3>
           
-          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-6">
-            <div className="flex justify-between items-center mb-4">
-                <label className="font-bold text-slate-700">Sensibilité (Alpha) : <span className="text-blue-600 font-mono">{alpha}</span></label>
-                <span className="text-xs text-slate-500 bg-white px-2 py-1 rounded border">Poids du besoin</span>
+          <div className="bg-slate-800/50 p-4 rounded-xl border border-cyan-500/20 mb-5 shadow-sm">
+            <div className="flex justify-between items-center mb-3">
+                <div>
+                    <label className="font-bold text-white text-sm">Sensibilité (Alpha)</label>
+                    <p className="text-xs text-cyan-300/60 mt-0.5">Poids du besoin</p>
+                </div>
+                <span className="text-xl font-bold text-cyan-400 bg-slate-900/50 px-3 py-1 rounded-lg border border-cyan-500/30 font-mono text-sm">{alpha}</span>
             </div>
             <input 
                 type="range" min="0" max="1" step="0.1" 
                 value={alpha} 
                 onChange={(e) => setAlpha(e.target.value)}
-                className="w-full"
+                className="w-full h-2 bg-cyan-600/30 rounded-lg appearance-none cursor-pointer"
+                style={{
+                    accentColor: '#06b6d4'
+                }}
             />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {Object.keys(radarData).map((themeName) => (
-               <div key={themeName} className="bg-white border border-slate-200 rounded-xl overflow-hidden transition-all shadow-sm hover:shadow-md">
+               <div key={themeName} className="bg-slate-800/40 border border-cyan-500/20 rounded-lg overflow-hidden transition-all shadow-sm hover:shadow-md hover:border-cyan-500/40">
                  <button 
                     onClick={() => toggleTheme(themeName)}
-                    className="w-full flex justify-between items-center p-4 bg-white hover:bg-slate-50 transition"
+                    className="w-full flex justify-between items-center p-4 hover:bg-slate-800/60 transition"
                  >
-                    <span className="font-bold text-sm text-slate-700 uppercase tracking-wide">{themeName}</span>
-                    {openTheme === themeName ? <ChevronUp size={18} className="text-slate-400"/> : <ChevronDown size={18} className="text-slate-400"/>}
+                    <div className="flex items-center gap-2">
+                        <div className="w-0.5 h-5 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full"></div>
+                        <span className="font-bold text-xs text-cyan-300 uppercase tracking-tight">{themeName}</span>
+                    </div>
+                    {openTheme === themeName ? <ChevronUp size={18} className="text-cyan-400"/> : <ChevronDown size={18} className="text-slate-500"/>}
                  </button>
                  
                  {openTheme === themeName && (
-                    <div className="p-4 bg-slate-50 border-t border-slate-100 space-y-4 animate-fade-in">
+                    <div className="p-3 bg-slate-900/50 border-t border-cyan-500/10 space-y-3 animate-fade-in">
                         {criteriaList.filter(c => c.Thématique === themeName).map(crit => (
-                            <div key={crit.Code}>
+                            <div key={crit.Code} className="bg-slate-800/50 rounded-lg p-3 border border-cyan-500/10 hover:border-cyan-500/30 hover:shadow-sm transition">
                                 <div className="flex justify-between items-end mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-slate-500 w-10">{crit.Code}</span>
-                                        <span className="text-sm font-medium text-slate-700 truncate w-48" title={crit.Critère}>{crit.Critère}</span>
+                                    <div className="flex items-center gap-2 flex-1">
+                                        <span className="text-xs font-bold text-white bg-gradient-to-br from-cyan-600 to-blue-700 w-8 h-8 flex items-center justify-center rounded-md flex-shrink-0">{crit.Code}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-xs font-bold text-white block truncate" title={crit.Critère}>{crit.Critère}</span>
+                                            <span className="text-xs text-cyan-300/60"><span className={`font-bold ${scores[crit.Code] < 2 ? 'text-red-400' : 'text-cyan-400'}`}>{scores[crit.Code] || 0}</span>/5</span>
+                                        </div>
                                         {crit.Explications && (
                                             <div className="group relative">
-                                                <Info size={14} className="text-slate-300 hover:text-blue-500 cursor-help" />
-                                                <div className="absolute left-0 bottom-6 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none z-50">
+                                                <Info size={14} className="text-slate-500 hover:text-cyan-400 cursor-help flex-shrink-0" />
+                                                <div className="absolute left-0 bottom-6 w-56 p-2 bg-slate-900 border border-cyan-500/30 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-50 leading-snug">
                                                     {crit.Explications}
                                                 </div>
                                             </div>
                                         )}
                                     </div>
-                                    <span className={`text-sm font-bold font-mono ${scores[crit.Code] < 2 ? 'text-red-500' : 'text-blue-600'}`}>
-                                        {scores[crit.Code]}/5
-                                    </span>
                                 </div>
                                 <input 
                                     type="range" min="0" max="5" step="1"
                                     value={scores[crit.Code] || 0}
                                     onChange={(e) => setScores(prev => ({...prev, [crit.Code]: parseInt(e.target.value)}))}
-                                    className={`w-full ${scores[crit.Code] < 2 ? 'danger-slider' : ''}`}
+                                    className={`w-full h-1.5 rounded-full appearance-none cursor-pointer transition`}
+                                    style={{
+                                        accentColor: scores[crit.Code] < 2 ? '#ef4444' : '#06b6d4'
+                                    }}
                                 />
                             </div>
                         ))}
