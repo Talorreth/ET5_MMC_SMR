@@ -37,7 +37,7 @@ const API_URL = "http://127.0.0.1:8000";
 const BAR_COLORS = ['#22d3ee', '#38bdf8', '#60a5fa', '#a78bfa', '#f59e0b'];
 const HARD_NO_GO_CODES = ['GS', 'HG', 'PF', 'LU', 'ER', 'SOC2', 'ENV6', 'GEO2', 'GEO5'];
 
-const fixText = (value) => {
+  const fixText = (value) => {
   if (value === null || value === undefined) return '';
   let text = String(value);
 
@@ -118,6 +118,17 @@ const formatSmrLabel = (value) =>
     .replace(/\s\(/g, '\u00A0(')
     .replace(/\s/g, '\u00A0');
 
+const mergeScores = (base, overrides) => {
+  if (!base) return {};
+  const merged = { ...base };
+  if (overrides) {
+    Object.entries(overrides).forEach(([code, value]) => {
+      merged[code] = value;
+    });
+  }
+  return merged;
+};
+
 const SmrTick = ({ x, y, payload }) => {
   const label = formatSmrLabel(payload?.value ?? '');
   return (
@@ -186,6 +197,12 @@ export default function SimulationPanel({ island, onClose }) {
   const [scenario, setScenario] = useState('classic');
   const [scenarioMenuOpen, setScenarioMenuOpen] = useState(false);
   const [scenarioScores, setScenarioScores] = useState({});
+  const [scenarioOverrides, setScenarioOverrides] = useState({});
+  const [scenarioDrawerOpen, setScenarioDrawerOpen] = useState(false);
+  const [editingScenario, setEditingScenario] = useState('2030');
+  const [scenarioSearch, setScenarioSearch] = useState('');
+  const [showOnlyModified, setShowOnlyModified] = useState(false);
+  const [showOnlyHardNoGo, setShowOnlyHardNoGo] = useState(false);
   const [alpha, setAlpha] = useState(0.3);
   const [results, setResults] = useState(null);
   const [selectedSmr, setSelectedSmr] = useState(null);
@@ -212,8 +229,10 @@ export default function SimulationPanel({ island, onClose }) {
         setCriteriaList(critRes.data || []);
         setSmrProfiles(smrRes.data || {});
         if (islandRes.data && islandRes.data[island.id]) {
-          setScores(islandRes.data[island.id]);
-          setOriginalScores(islandRes.data[island.id]);
+          const base = islandRes.data[island.id];
+          const overrides = scenarioOverrides?.[scenario]?.[island.id];
+          setScores(mergeScores(base, overrides));
+          setOriginalScores(base);
         }
         if (weightRes.data && weightRes.data[island.id]) {
           setBaseWeights(weightRes.data[island.id]);
@@ -228,6 +247,14 @@ export default function SimulationPanel({ island, onClose }) {
     setResults(null);
     setSelectedSmr(null);
   }, [island.id, scenario]);
+
+  useEffect(() => {
+    const base = scenarioScores?.[scenario]?.[island.id];
+    if (!base) return;
+    const overrides = scenarioOverrides?.[scenario]?.[island.id];
+    setScores(mergeScores(base, overrides));
+    setOriginalScores(base);
+  }, [scenarioScores, scenarioOverrides, scenario, island.id]);
 
   useEffect(() => {
     const fetchScenarioScores = async () => {
@@ -343,15 +370,27 @@ export default function SimulationPanel({ island, onClose }) {
     };
     const scenarios = ['classic', '2030', '2050'];
     const classicScores = scenarioScores?.classic?.[island.id];
+    const classicOverrides = scenarioOverrides?.classic?.[island.id];
+    const classicMerged = mergeScores(classicScores, classicOverrides);
     let classicAvg = null;
-    if (classicScores && criteriaList.length) {
-      const total = criteriaList.reduce((sum, crit) => sum + (classicScores[crit.Code] ?? 0), 0);
+    if (classicMerged && criteriaList.length) {
+      const total = criteriaList.reduce((sum, crit) => sum + (classicMerged[crit.Code] ?? 0), 0);
       classicAvg = total / criteriaList.length;
     }
     return scenarios.map((key) => {
-      const scoresForIsland = scenarioScores?.[key]?.[island.id];
+      const baseScores = scenarioScores?.[key]?.[island.id];
+      const overrides = scenarioOverrides?.[key]?.[island.id];
+      const scoresForIsland = mergeScores(baseScores, overrides);
       if (!scoresForIsland || !criteriaList.length) {
-        return { key, label: labels[key], avg: null, critical: null, hard: null, delta: null };
+        return {
+          key,
+          label: labels[key],
+          avg: null,
+          critical: null,
+          hard: null,
+          delta: null,
+          modified: overrides ? Object.keys(overrides).length : 0,
+        };
       }
       const total = criteriaList.reduce((sum, crit) => sum + (scoresForIsland[crit.Code] ?? 0), 0);
       const avg = total / criteriaList.length;
@@ -365,9 +404,10 @@ export default function SimulationPanel({ island, onClose }) {
         critical,
         hard,
         delta,
+        modified: overrides ? Object.keys(overrides).length : 0,
       };
     });
-  }, [scenarioScores, criteriaList, island.id]);
+  }, [scenarioScores, scenarioOverrides, criteriaList, island.id]);
 
   const eligibleCount = useMemo(() => {
     if (!results) return smrCount;
@@ -380,6 +420,52 @@ export default function SimulationPanel({ island, onClose }) {
     if (!criteriaList.length) return 0;
     return Math.min(100, (criticalCount / criteriaList.length) * 100);
   }, [criticalCount, criteriaList]);
+
+  const editingScenarioScores = useMemo(() => {
+    const baseScores = scenarioScores?.[editingScenario]?.[island.id];
+    const overrides = scenarioOverrides?.[editingScenario]?.[island.id];
+    return mergeScores(baseScores, overrides);
+  }, [scenarioScores, scenarioOverrides, editingScenario, island.id]);
+
+  const editingSummary = useMemo(() => {
+    if (!criteriaList.length || !editingScenarioScores) {
+      return { avg: null, critical: null, hard: null };
+    }
+    const total = criteriaList.reduce((sum, crit) => sum + (editingScenarioScores[crit.Code] ?? 0), 0);
+    const avg = total / criteriaList.length;
+    const critical = criteriaList.filter((crit) => (editingScenarioScores[crit.Code] ?? 0) < 2).length;
+    const hard = HARD_NO_GO_CODES.filter((code) => (editingScenarioScores[code] ?? 0) < 2).length;
+    return { avg, critical, hard };
+  }, [criteriaList, editingScenarioScores]);
+
+  const filteredCriteriaByTheme = useMemo(() => {
+    const search = scenarioSearch.trim().toLowerCase();
+    const overrides = scenarioOverrides?.[editingScenario]?.[island.id] || {};
+    const result = {};
+    Object.entries(criteriaByTheme).forEach(([theme, list]) => {
+      const filtered = list.filter((crit) => {
+        const code = crit.Code;
+        const label = getCriteriaLabel(crit).toLowerCase();
+        const matchesSearch = !search || label.includes(search) || code.toLowerCase().includes(search);
+        const isModified = overrides[code] !== undefined;
+        const isHard = HARD_NO_GO_CODES.includes(code);
+        if (showOnlyModified && !isModified) return false;
+        if (showOnlyHardNoGo && !isHard) return false;
+        return matchesSearch;
+      });
+      if (filtered.length) result[theme] = filtered;
+    });
+    return result;
+  }, [
+    criteriaByTheme,
+    scenarioSearch,
+    showOnlyModified,
+    showOnlyHardNoGo,
+    scenarioOverrides,
+    editingScenario,
+    island.id,
+    getCriteriaLabel,
+  ]);
 
   const techRatio = useMemo(() => {
     if (!smrCount) return 0;
@@ -430,16 +516,67 @@ export default function SimulationPanel({ island, onClose }) {
 
   const scenarioLabel = scenario === 'classic' ? 'Classique' : scenario;
 
-  const scenarioOptions = [
-    { value: 'classic', label: 'Classique' },
-    { value: '2030', label: '2030' },
-    { value: '2050', label: '2050' },
-  ];
+  const scenarioOverridesForIsland = scenarioOverrides?.[scenario]?.[island.id] || {};
 
   const handleScenarioSelect = (value) => {
     setScenario(value);
     setScenarioMenuOpen(false);
   };
+
+  const updateScenarioOverride = (scenarioKey, code, value) => {
+    setScenarioOverrides((prev) => {
+      const baseScores = scenarioScores?.[scenarioKey]?.[island.id];
+      const baseValue = baseScores ? baseScores[code] : undefined;
+      const next = { ...prev };
+      const scenarioData = { ...(next[scenarioKey] || {}) };
+      const islandOverrides = { ...(scenarioData[island.id] || {}) };
+      if (baseValue !== undefined && Number(value) === Number(baseValue)) {
+        delete islandOverrides[code];
+      } else {
+        islandOverrides[code] = Number(value);
+      }
+      if (Object.keys(islandOverrides).length) {
+        scenarioData[island.id] = islandOverrides;
+      } else {
+        delete scenarioData[island.id];
+      }
+      if (Object.keys(scenarioData).length) {
+        next[scenarioKey] = scenarioData;
+      } else {
+        delete next[scenarioKey];
+      }
+      return next;
+    });
+  };
+
+  const clearScenarioOverrides = (scenarioKey) => {
+    setScenarioOverrides((prev) => {
+      const next = { ...prev };
+      if (!next[scenarioKey]) return prev;
+      const scenarioData = { ...next[scenarioKey] };
+      delete scenarioData[island.id];
+      if (Object.keys(scenarioData).length) {
+        next[scenarioKey] = scenarioData;
+      } else {
+        delete next[scenarioKey];
+      }
+      return next;
+    });
+  };
+
+  const openScenarioDrawer = (targetScenario) => {
+    const nextScenario = targetScenario === 'classic' ? '2030' : targetScenario;
+    setEditingScenario(nextScenario);
+    setScenarioDrawerOpen(true);
+  };
+
+  const closeScenarioDrawer = () => setScenarioDrawerOpen(false);
+
+  const scenarioOptions = [
+    { value: 'classic', label: 'Classique' },
+    { value: '2030', label: '2030' },
+    { value: '2050', label: '2050' },
+  ];
 
   const statusPillClass = results
     ? results.is_nogo
@@ -495,6 +632,9 @@ export default function SimulationPanel({ island, onClose }) {
     setScores(originalScores);
     setResults(null);
     setSelectedSmr(null);
+    if (scenario !== 'classic') {
+      clearScenarioOverrides(scenario);
+    }
   };
 
   const toggleTheme = (theme) => setOpenTheme(openTheme === theme ? null : theme);
@@ -528,9 +668,9 @@ export default function SimulationPanel({ island, onClose }) {
                       </>
                     ) : (
                       <>
-                        <Play size={16} fill="currentColor" /> Lancer
-                      </>
-                    )}
+                      <Play size={16} fill="currentColor" /> Lancer
+                    </>
+                  )}
                   </button>
                   <button
                     type="button"
@@ -577,15 +717,24 @@ export default function SimulationPanel({ island, onClose }) {
               </div>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="panel-btn panel-btn-icon panel-btn-close"
-            aria-label="Fermer"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="panel-header-actions">
+            <button
+              type="button"
+              className="panel-btn panel-btn-ghost panel-btn-edit panel-btn-edit--header"
+              onClick={() => openScenarioDrawer(scenario)}
+            >
+              <SlidersHorizontal size={14} /> Éditer
+            </button>
+            <button
+              onClick={onClose}
+              className="panel-btn panel-btn-icon panel-btn-close"
+              aria-label="Fermer"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -606,6 +755,18 @@ export default function SimulationPanel({ island, onClose }) {
                 onClick={() => handleScenarioSelect(item.key)}
                 className={`scenario-compare-card ${scenario === item.key ? 'scenario-compare-card--active' : ''}`}
               >
+                {item.key !== 'classic' && (
+                  <button
+                    type="button"
+                    className="scenario-compare-edit"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openScenarioDrawer(item.key);
+                    }}
+                  >
+                    Modifier
+                  </button>
+                )}
                 <div className="scenario-compare-label">{item.label}</div>
                 <div className="scenario-compare-metrics">
                   <div className="scenario-compare-metric">
@@ -627,6 +788,9 @@ export default function SimulationPanel({ island, onClose }) {
                     <strong>{item.hard ?? '--'}</strong>
                   </div>
                 </div>
+                {item.modified > 0 && item.key !== 'classic' && (
+                  <span className="scenario-compare-badge">{item.modified} modifiés</span>
+                )}
               </button>
             ))}
           </div>
@@ -1076,6 +1240,116 @@ export default function SimulationPanel({ island, onClose }) {
 
         
       </div>
+      {scenarioDrawerOpen && <div className="scenario-drawer-backdrop" onClick={closeScenarioDrawer} />}
+      <aside className={`scenario-drawer ${scenarioDrawerOpen ? 'is-open' : ''}`}>
+        <div className="scenario-drawer-header">
+          <div>
+            <p className="scenario-drawer-kicker">Éditeur de scénario</p>
+            <h3 className="scenario-drawer-title">{editingScenario === '2050' ? '2050' : '2030'}</h3>
+          </div>
+          <button type="button" className="panel-btn panel-btn-icon" onClick={closeScenarioDrawer} aria-label="Fermer">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="scenario-drawer-tabs">
+          {['2030', '2050'].map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={`scenario-drawer-tab ${editingScenario === key ? 'is-active' : ''}`}
+              onClick={() => setEditingScenario(key)}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+        <div className="scenario-drawer-summary">
+          <div>
+            <span>Score moyen</span>
+            <strong>{editingSummary.avg !== null ? editingSummary.avg.toFixed(2) : '--'}</strong>
+          </div>
+          <div>
+            <span>Critiques</span>
+            <strong>{editingSummary.critical ?? '--'}</strong>
+          </div>
+          <div>
+            <span>Hard No-Go</span>
+            <strong>{editingSummary.hard ?? '--'}</strong>
+          </div>
+        </div>
+        <div className="scenario-drawer-controls">
+          <input
+            type="text"
+            placeholder="Rechercher un critère..."
+            value={scenarioSearch}
+            onChange={(event) => setScenarioSearch(event.target.value)}
+            className="scenario-drawer-search"
+          />
+          <div className="scenario-drawer-toggles">
+            <button
+              type="button"
+              className={`scenario-drawer-toggle ${showOnlyModified ? 'is-active' : ''}`}
+              onClick={() => setShowOnlyModified((prev) => !prev)}
+            >
+              Modifiés
+            </button>
+            <button
+              type="button"
+              className={`scenario-drawer-toggle ${showOnlyHardNoGo ? 'is-active' : ''}`}
+              onClick={() => setShowOnlyHardNoGo((prev) => !prev)}
+            >
+              Hard No-Go
+            </button>
+            <button
+              type="button"
+              className="scenario-drawer-reset"
+              onClick={() => clearScenarioOverrides(editingScenario)}
+            >
+              Réinitialiser
+            </button>
+          </div>
+        </div>
+        <div className="scenario-drawer-list">
+          {Object.entries(filteredCriteriaByTheme).map(([theme, list]) => (
+            <div key={theme} className="scenario-criteria-group">
+              <h4 className="scenario-criteria-title">{fixText(theme)}</h4>
+              <div className="scenario-criteria-items">
+                {list.map((crit) => {
+                  const base = scenarioScores?.[editingScenario]?.[island.id]?.[crit.Code];
+                  const override = scenarioOverrides?.[editingScenario]?.[island.id]?.[crit.Code];
+                  const value = override !== undefined ? override : base ?? 0;
+                  const isModified = override !== undefined && base !== undefined && Number(override) !== Number(base);
+                  return (
+                    <div key={crit.Code} className={`scenario-criteria-row ${isModified ? 'is-modified' : ''}`}>
+                      <div className="scenario-criteria-meta">
+                        <span className="scenario-criteria-code">{crit.Code}</span>
+                        <span className="scenario-criteria-label">{getCriteriaLabel(crit)}</span>
+                      </div>
+                      <div className="scenario-criteria-control">
+                        <input
+                          type="range"
+                          min="0"
+                          max="5"
+                          step="1"
+                          value={value}
+                          onChange={(event) => updateScenarioOverride(editingScenario, crit.Code, event.target.value)}
+                        />
+                        <div className="scenario-criteria-values">
+                          <span className="scenario-criteria-value">{value}</span>
+                          <span className="scenario-criteria-base">Base {base ?? '--'}</span>
+                          {isModified && <span className="scenario-criteria-badge">Modifié</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </aside>
     </div>
   );
 }
