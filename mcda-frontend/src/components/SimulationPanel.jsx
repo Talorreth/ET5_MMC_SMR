@@ -33,15 +33,91 @@ import {
 const API_URL = "http://127.0.0.1:8000";
 const BAR_COLORS = ['#22d3ee', '#38bdf8', '#60a5fa', '#a78bfa', '#f59e0b'];
 
+const fixText = (value) => {
+  if (value === null || value === undefined) return '';
+  let text = String(value);
+
+  if (text.includes('Ã') || text.includes('Â')) {
+    try {
+      const bytes = Uint8Array.from(text, (char) => char.charCodeAt(0));
+      text = new TextDecoder('utf-8').decode(bytes);
+    } catch (error) {
+      // Silence: on garde la version originale si l'environnement ne supporte pas TextDecoder.
+    }
+  }
+
+  const mojibakeFixes = [
+    [/Ã©/g, 'é'], [/Ã¨/g, 'è'], [/Ãª/g, 'ê'], [/Ã«/g, 'ë'],
+    [/Ã /g, 'à'], [/Ã¢/g, 'â'], [/Ã¤/g, 'ä'],
+    [/Ã®/g, 'î'], [/Ã¯/g, 'ï'],
+    [/Ã´/g, 'ô'], [/Ã¶/g, 'ö'],
+    [/Ã¹/g, 'ù'], [/Ã»/g, 'û'], [/Ã¼/g, 'ü'],
+    [/Ã§/g, 'ç'],
+    [/â€™/g, '’'], [/â€œ/g, '“'], [/â€/g, '”'], [/â€“/g, '–'], [/â€¦/g, '…'],
+    [/Â/g, ''],
+  ];
+
+  mojibakeFixes.forEach(([pattern, replacement]) => {
+    text = text.replace(pattern, replacement);
+  });
+
+  const wordFixes = [
+    [/S�ret�/g, 'Sûreté'],
+    [/S�curit�/g, 'Sécurité'],
+    [/R�silience/g, 'Résilience'],
+    [/M�t�orologie/g, 'Météorologie'],
+    [/G�ologie/g, 'Géologie'],
+    [/G�otechnique/g, 'Géotechnique'],
+    [/G�opolitique/g, 'Géopolitique'],
+    [/D�chets/g, 'Déchets'],
+    [/D�pendance/g, 'Dépendance'],
+    [/Maturit�/g, 'Maturité'],
+    [/r�glement/g, 'règlement'],
+    [/Syst�me/g, 'Système'],
+    [/Capacit�/g, 'Capacité'],
+    [/Propri�t�/g, 'Propriété'],
+    [/cha�ne/g, 'chaîne'],
+    [/p�che/g, 'pêche'],
+    [/temp�tes/g, 'tempêtes'],
+    [/co�ts/g, 'coûts'],
+    [/b�timents/g, 'bâtiments'],
+    [/�conomie/g, 'Économie'],
+    [/�l�vation/g, 'Élévation'],
+    [/�colog/g, 'écolog'],
+    [/�lector/g, 'élector'],
+    [/d��/g, "d'é"],
+    [/Ad�quation puissance \? taille r�seau/gi, 'Adéquation puissance / taille réseau'],
+  ];
+
+  wordFixes.forEach(([pattern, replacement]) => {
+    text = text.replace(pattern, replacement);
+  });
+
+  text = text.replace(/d�(?=[aeiouyâàéèêëîïôöûü])/gi, "d'");
+  text = text.replace(/l�(?=[aeiouyâàéèêëîïôöûü])/gi, "l'");
+  text = text.replace(/\b�le\b/gi, 'île');
+  text = text.replace(/\s�\s?l/gi, ' à l');
+  text = text.replace(/\s�\s?long/gi, ' à long');
+  text = text.replace(/\s�\s?cr/gi, ' à cr');
+  text = text.replace(/\s�\s?60/gi, ' à 60');
+  text = text.replace(/\sen �le/gi, 'en île');
+
+  if (text.includes('�')) {
+    text = text.replace(/�/g, 'é');
+  }
+
+  return text;
+};
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-slate-950/95 p-3 border border-cyan-500/30 shadow-2xl rounded-xl text-xs">
-        <p className="font-semibold text-cyan-300 mb-2">{label}</p>
+        <p className="font-semibold text-cyan-300 mb-2">{fixText(label)}</p>
         {payload.map((entry, index) => (
           <p key={index} style={{ color: entry.color }} className="flex items-center gap-2 text-slate-100">
             <span className="w-2 h-2 rounded-full" style={{ background: entry.color }}></span>
-            {entry.name}: <span className="font-mono font-bold">{entry.value}</span>
+            {fixText(entry.name)}: <span className="font-mono font-bold">{entry.value}</span>
           </p>
         ))}
       </div>
@@ -56,33 +132,40 @@ export default function SimulationPanel({ island, onClose }) {
   const [scores, setScores] = useState({});
   const [originalScores, setOriginalScores] = useState({});
   const [smrProfiles, setSmrProfiles] = useState({});
+  const [baseWeights, setBaseWeights] = useState({});
   const [alpha, setAlpha] = useState(0.3);
   const [results, setResults] = useState(null);
   const [selectedSmr, setSelectedSmr] = useState(null);
   const [openTheme, setOpenTheme] = useState(null);
 
   const getThemeValue = (crit) =>
-    crit['ThÃ©matique'] ?? crit.Thematique ?? 'Autre';
+    fixText(crit['Thématique'] ?? crit.Thematique ?? crit['Thematique'] ?? 'Autre');
 
   const getCriteriaLabel = (crit) =>
-    crit['CritÃ¨re'] ?? crit.Critere ?? 'CritÃ¨re';
+    fixText(crit['Critère'] ?? crit.Critere ?? crit['Critere'] ?? 'Critère');
 
   const getExplication = (crit) =>
-    crit.Explications ?? crit.Explication ?? '';
+    fixText(crit.Explications ?? crit.Explication ?? '');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [critRes, islandRes, smrRes] = await Promise.all([
+        const [critRes, islandRes, smrRes, weightRes] = await Promise.all([
           axios.get(`${API_URL}/criteria`),
           axios.get(`${API_URL}/islands`),
           axios.get(`${API_URL}/smrs`),
+          axios.get(`${API_URL}/weights`),
         ]);
         setCriteriaList(critRes.data || []);
         setSmrProfiles(smrRes.data || {});
         if (islandRes.data && islandRes.data[island.id]) {
           setScores(islandRes.data[island.id]);
           setOriginalScores(islandRes.data[island.id]);
+        }
+        if (weightRes.data && weightRes.data[island.id]) {
+          setBaseWeights(weightRes.data[island.id]);
+        } else {
+          setBaseWeights({});
         }
       } catch (error) {
         console.error("Erreur chargement:", error);
@@ -106,7 +189,7 @@ export default function SimulationPanel({ island, onClose }) {
       themes[themeKey].count += 1;
     });
     return Object.keys(themes).map((theme) => ({
-      subject: theme,
+      subject: fixText(theme),
       island: parseFloat((themes[theme].islandSum / themes[theme].count).toFixed(2)),
       smr: selectedSmr ? parseFloat((themes[theme].smrSum / themes[theme].count).toFixed(2)) : 0,
       fullMark: 5,
@@ -131,6 +214,26 @@ export default function SimulationPanel({ island, onClose }) {
       }))
       .sort((a, b) => b.avg - a.avg);
   }, [criteriaList, scores]);
+
+  const themeWeightedStats = useMemo(() => {
+    if (!criteriaList.length) return [];
+    const map = {};
+    criteriaList.forEach((crit) => {
+      const theme = getThemeValue(crit);
+      if (!map[theme]) map[theme] = { theme, weightedSum: 0, weightSum: 0 };
+      const weightValue = Number(baseWeights[crit.Code]);
+      const weight = Number.isFinite(weightValue) ? weightValue : 1;
+      const score = scores[crit.Code] ?? 0;
+      map[theme].weightedSum += score * weight;
+      map[theme].weightSum += weight;
+    });
+    return Object.values(map)
+      .map((item) => ({
+        ...item,
+        avg: item.weightSum ? parseFloat((item.weightedSum / item.weightSum).toFixed(2)) : 0,
+      }))
+      .sort((a, b) => b.avg - a.avg);
+  }, [criteriaList, scores, baseWeights]);
 
   const criteriaByTheme = useMemo(() => {
     const map = {};
@@ -171,6 +274,18 @@ export default function SimulationPanel({ island, onClose }) {
       : 'panel-pill--success'
     : 'panel-pill--warning';
 
+  const nogoItems = useMemo(() => {
+    if (!results?.nogo_reasons) return [];
+    return results.nogo_reasons.map((reason) => {
+      const cleaned = fixText(reason);
+      const match = cleaned.match(/^(.*)\(Score:\s*([0-9.]+)\)\s*$/);
+      if (!match) {
+        return { label: cleaned, score: null };
+      }
+      return { label: match[1].trim(), score: match[2] };
+    });
+  }, [results]);
+
   const handleCalculate = async () => {
     setLoading(true);
     setSelectedSmr(null);
@@ -206,7 +321,7 @@ export default function SimulationPanel({ island, onClose }) {
               <span className="panel-title-dot" />
               <span className="panel-title-text">Zone insulaire analysée</span>
             </div>
-            <h2 className="text-3xl font-black text-white leading-tight panel-title">{island.name}</h2>
+            <h2 className="text-3xl font-black text-white leading-tight panel-title">{fixText(island.name)}</h2>
             <div className="flex flex-wrap gap-4 panel-pad-inline panel-pill-row">
               <span className="panel-pill panel-pill--accent">Alpha {alpha.toFixed(1)}</span>
               <span className="panel-pill panel-pill--muted">
@@ -265,7 +380,7 @@ export default function SimulationPanel({ island, onClose }) {
                   onClick={() => setSelectedSmr(null)}
                   className="panel-pill panel-pill--warning panel-pill--normal"
                 >
-                  Comparaison: {selectedSmr} â€¢ Effacer
+                  Comparaison: {fixText(selectedSmr)} • Effacer
                 </button>
               ) : (
                 <span className="text-xs text-cyan-300/70">Cliquez sur un SMR pour comparer</span>
@@ -274,16 +389,48 @@ export default function SimulationPanel({ island, onClose }) {
             <p className="text-sm text-slate-400 panel-pad-inline -mt-2">
               Cette vue synthétise les forces et fragilités du site, puis compare les SMR au besoin local.
             </p>
+            {themeWeightedStats.length > 0 && (
+              <div className="panel-gauge-section panel-pad-inline">
+                <p className="panel-gauge-label">Moyenne pondérée par thématique (/5)</p>
+                <div className="panel-gauge-grid">
+                  {themeWeightedStats.map((item) => (
+                    <div key={item.theme} className="panel-gauge-card">
+                      <div className="panel-gauge-header">
+                        <span className="panel-gauge-title">{fixText(item.theme)}</span>
+                        <span className="panel-gauge-value">{item.avg}/5</span>
+                      </div>
+                      <div className="panel-gauge-track">
+                        <div
+                          className="panel-gauge-fill"
+                          style={{ width: `${Math.min(100, (item.avg / 5) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {radarData.length > 0 ? (
-              <div className="panel-card-soft panel-card--roomy h-80 w-full rounded-2xl">
+              <div className="panel-card-soft panel-card--roomy rounded-2xl radar-wrap">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
                     <PolarGrid stroke="#0e7490" strokeDasharray="3" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: '#a1f5ff', fontWeight: 500 }} />
+                    <PolarAngleAxis
+                      dataKey="subject"
+                      tick={{ fontSize: 11, fill: '#a1f5ff', fontWeight: 500 }}
+                      tickFormatter={fixText}
+                    />
                     <PolarRadiusAxis angle={30} domain={[0, 5]} tick={false} axisLine={false} />
                     <Radar name="Site" dataKey="island" stroke="#22d3ee" fill="#22d3ee" fillOpacity={0.15} strokeWidth={2.4} />
                     {selectedSmr && (
-                      <Radar name={selectedSmr} dataKey="smr" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.2} strokeWidth={2.4} />
+                      <Radar
+                        name={fixText(selectedSmr)}
+                        dataKey="smr"
+                        stroke="#f59e0b"
+                        fill="#f59e0b"
+                        fillOpacity={0.2}
+                        strokeWidth={2.4}
+                      />
                     )}
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ paddingTop: '15px', fontSize: '12px', color: '#a1f5ff' }} />
@@ -399,15 +546,38 @@ export default function SimulationPanel({ island, onClose }) {
                 >
                   {results.is_nogo ? <AlertTriangle size={22} /> : <CheckCircle size={22} />}
                 </div>
-                <div>
-                  <h4 className="font-semibold text-base mb-2">
-                    {results.is_nogo ? 'Projet critique (No-Go)' : 'Projet viable'}
-                  </h4>
-                  <p className="text-sm opacity-80 leading-relaxed">
-                    {results.is_nogo
-                      ? `Contraintes bloquantes : ${results.nogo_reasons.join(', ')}`
-                      : "Tous les critères d'exclusion sont respectés."}
-                  </p>
+                <div className="flex-1">
+                  {results.is_nogo ? (
+                    <>
+                      <div className="nogo-title-row">
+                        <h4 className="nogo-title">Projet critique</h4>
+                        <span className="nogo-pill">No-Go</span>
+                      </div>
+                      <p className="nogo-sub">
+                        Des critères bloquants empêchent le projet d'être viable pour ce site.
+                      </p>
+                      <div className="nogo-count">
+                        {nogoItems.length} contraintes bloquantes
+                      </div>
+                      <div className="nogo-list">
+                        {nogoItems.map((item, index) => (
+                          <div key={`${item.label}-${index}`} className="nogo-item">
+                            <span className="nogo-item-label">{item.label}</span>
+                            {item.score !== null && (
+                              <span className="nogo-item-score">Score {item.score}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h4 className="font-semibold text-base mb-2">Projet viable</h4>
+                      <p className="text-sm opacity-80 leading-relaxed">
+                        Tous les critères d'exclusion sont respectés.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -427,6 +597,7 @@ export default function SimulationPanel({ island, onClose }) {
                         type="category"
                         width={120}
                         tick={{ fontSize: 11, fontWeight: 500, fill: '#a1f5ff' }}
+                        tickFormatter={fixText}
                       />
                       <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(34, 211, 238, 0.08)' }} />
                       <Bar dataKey="score" radius={[0, 8, 8, 0]} barSize={20}>
@@ -450,24 +621,25 @@ export default function SimulationPanel({ island, onClose }) {
                 </div>
 
                 <div className="panel-card-soft panel-card--roomy rounded-2xl">
-                  <h4 className="text-sm font-semibold text-cyan-200 uppercase tracking-[0.2em]">Top 3</h4>
-                  <div className="mt-5 space-y-4">
+                  <h4 className="top3-title">Top 3</h4>
+                  <div className="top3-list">
                     {results.ranking.slice(0, 3).map((entry, index) => (
-                      <div
-                        key={entry.technologie}
-                        className={`panel-row rounded-xl p-3 ${index === 0 ? 'panel-row--highlight' : ''}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-xs text-slate-400">#{index + 1}</p>
-                            <p className="text-sm font-semibold text-white leading-tight">
-                              {entry.technologie}
-                            </p>
+                      <div key={entry.technologie} className={`top3-row top3-row--${index + 1}`}>
+                        <div className="top3-row-main">
+                          <span className="top3-rank">#{index + 1}</span>
+                          <div className="top3-meta">
+                            <span className="top3-name">{fixText(entry.technologie)}</span>
+                            <div className="top3-bar">
+                              <div
+                                className="top3-bar-fill"
+                                style={{ width: `${Math.min(100, (entry.score / 5) * 100)}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs text-slate-400">Score</p>
-                            <p className="text-lg font-bold text-cyan-200">{entry.score}</p>
-                          </div>
+                        </div>
+                        <div className="top3-score">
+                          <span className="top3-score-label">Score</span>
+                          <span className="top3-score-value">{entry.score}</span>
                         </div>
                       </div>
                     ))}
@@ -478,136 +650,8 @@ export default function SimulationPanel({ island, onClose }) {
           )}
         </section>
 
-        <section className="border-t border-cyan-500/10 pt-12 pb-28 space-y-8">
-          <h3 className="text-xl font-bold text-white flex items-center gap-5 section-title panel-pad-inline">
-            <span className="panel-icon-wrap">
-              <SlidersHorizontal size={20} className="text-cyan-300" />
-            </span>
-            Configuration
-          </h3>
-
-          <div className="panel-card panel-card--roomy rounded-2xl">
-            <div className="flex flex-wrap items-center justify-between gap-5 mb-5 panel-pad-inline">
-              <div>
-                <label className="font-semibold text-white text-base">SensibilitÃ© (Alpha)</label>
-                <p className="text-xs text-cyan-300/60 mt-1">
-                  0 = besoins dominants Â· 1 = poids de base uniquement
-                </p>
-              </div>
-              <span className="text-2xl font-bold text-cyan-200 bg-slate-900/50 px-5 py-2 rounded-lg border border-cyan-500/40 font-mono">
-                {alpha.toFixed(1)}
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={alpha}
-              onChange={(e) => setAlpha(parseFloat(e.target.value))}
-              className="w-full h-2 bg-cyan-600/30 rounded-lg appearance-none cursor-pointer panel-pad-inline"
-              style={{
-                accentColor: '#22d3ee',
-              }}
-            />
-          </div>
-
-          <div className="space-y-5">
-            {themeStats.map((theme) => (
-              <div
-                key={theme.theme}
-                className="panel-card-soft panel-card--roomy rounded-2xl overflow-hidden transition-all"
-              >
-                <button
-                  onClick={() => toggleTheme(theme.theme)}
-                  className="w-full flex flex-wrap justify-between items-center gap-5 p-7 hover:bg-slate-800/50 transition-all"
-                >
-                  <div className="flex items-center gap-5">
-                    <div className="w-1 h-10 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full" />
-                    <div>
-                      <span className="font-semibold text-sm text-cyan-200 uppercase tracking-tight">
-                        {theme.theme}
-                      </span>
-                      <div className="text-xs text-slate-400 mt-1">
-                        {theme.count} critères Â· moyenne {theme.avg}/5
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {theme.risk > 0 && (
-                      <span className="panel-pill panel-pill--danger panel-pill--normal">
-                        {theme.risk} critique{theme.risk > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {openTheme === theme.theme ? (
-                      <ChevronUp size={20} className="text-cyan-300" />
-                    ) : (
-                      <ChevronDown size={20} className="text-slate-500" />
-                    )}
-                  </div>
-                </button>
-
-                {openTheme === theme.theme && (
-                  <div className="panel-inset p-6 space-y-5 animate-fade-in">
-                    {(criteriaByTheme[theme.theme] || []).map((crit) => (
-                      <div
-                        key={crit.Code}
-                        className="panel-row rounded-xl p-6"
-                      >
-                        <div className="flex justify-between items-end mb-3">
-                          <div className="flex items-center gap-3 flex-1">
-                            <span className="text-xs font-bold text-white bg-gradient-to-br from-cyan-600 to-blue-700 w-9 h-9 flex items-center justify-center rounded-lg flex-shrink-0 shadow-md">
-                              {crit.Code}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-sm font-bold text-white block truncate" title={getCriteriaLabel(crit)}>
-                                {getCriteriaLabel(crit)}
-                              </span>
-                              <span className="text-xs text-cyan-300/70">
-                                <span
-                                  className={`font-bold ${
-                                    scores[crit.Code] < 2 ? 'text-red-400' : 'text-cyan-400'
-                                  }`}
-                                >
-                                  {scores[crit.Code] || 0}
-                                </span>
-                                /5
-                              </span>
-                            </div>
-                            {getExplication(crit) && (
-                              <div className="group relative">
-                                <Info size={16} className="text-slate-500 hover:text-cyan-400 cursor-help" />
-                                <div className="absolute left-0 bottom-8 w-56 p-3 bg-slate-950 border border-cyan-500/40 text-white text-xs rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none z-50 leading-snug">
-                                  {getExplication(crit)}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="5"
-                          step="1"
-                          value={scores[crit.Code] || 0}
-                          onChange={(e) => setScores((prev) => ({ ...prev, [crit.Code]: parseInt(e.target.value) }))}
-                          className="w-full h-2 rounded-full appearance-none cursor-pointer transition"
-                          style={{
-                            accentColor: scores[crit.Code] < 2 ? '#f87171' : '#22d3ee',
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
+        
       </div>
     </div>
   );
 }
-
-
-
