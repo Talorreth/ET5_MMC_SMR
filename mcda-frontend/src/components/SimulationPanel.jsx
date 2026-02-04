@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import {
   Play,
@@ -62,10 +62,10 @@ export default function SimulationPanel({ island, onClose }) {
   const [openTheme, setOpenTheme] = useState(null);
 
   const getThemeValue = (crit) =>
-    crit['Thématique'] ?? crit.Thematique ?? 'Autre';
+    crit['ThÃ©matique'] ?? crit.Thematique ?? 'Autre';
 
   const getCriteriaLabel = (crit) =>
-    crit['Critère'] ?? crit.Critere ?? 'Critère';
+    crit['CritÃ¨re'] ?? crit.Critere ?? 'CritÃ¨re';
 
   const getExplication = (crit) =>
     crit.Explications ?? crit.Explication ?? '';
@@ -200,80 +200,82 @@ export default function SimulationPanel({ island, onClose }) {
   return (
     <div className="simulation-panel-wrapper flex flex-col h-full w-full text-white relative">
       <div className="border-b border-cyan-500/10 bg-gradient-to-b from-slate-950/95 via-slate-900/80 to-slate-900/50 backdrop-blur-xl">
-        <div className="px-8 py-6 flex flex-wrap items-start justify-between gap-6">
-          <div className="space-y-3">
-            <div className="panel-kicker flex items-center gap-2 text-cyan-300/70">
-              <MapPin size={12} className="text-cyan-300" />
-              Site pilote
+        <div className="px-12 py-9 flex flex-wrap items-start justify-between gap-10 relative">
+          <div className="space-y-4 panel-title-block">
+            <div className="panel-title-chip">
+              <span className="panel-title-dot" />
+              <span className="panel-title-text">Zone insulaire analysée</span>
             </div>
-            <h2 className="text-3xl font-black text-white leading-tight">{island.name}</h2>
-            <div className="flex flex-wrap gap-2">
+            <h2 className="text-3xl font-black text-white leading-tight panel-title">{island.name}</h2>
+            <div className="flex flex-wrap gap-4 panel-pad-inline panel-pill-row">
               <span className="panel-pill panel-pill--accent">Alpha {alpha.toFixed(1)}</span>
               <span className="panel-pill panel-pill--muted">
                 {activeCriteriaCount}/{criteriaList.length} critères actifs
               </span>
               <span className={`panel-pill ${statusPillClass}`}>{statusLabel}</span>
+              <div className="panel-actions-left">
+                <button
+                  onClick={handleCalculate}
+                  disabled={loading}
+                  className="panel-btn panel-btn-primary"
+                >
+                  {loading ? (
+                    <>
+                      <Activity size={16} className="animate-spin" /> Calcul...
+                    </>
+                  ) : (
+                    <>
+                      <Play size={16} fill="currentColor" /> Lancer
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="panel-btn panel-btn-ghost"
+                >
+                  <RotateCcw size={16} /> Réinitialiser
+                </button>
+              </div>
             </div>
           </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <button
-              onClick={handleCalculate}
-              disabled={loading}
-              className="panel-btn panel-btn-primary"
-            >
-              {loading ? (
-                <>
-                  <Activity size={16} className="animate-spin" /> Calcul...
-                </>
-              ) : (
-                <>
-                  <Play size={16} fill="currentColor" /> Lancer
-                </>
-              )}
-            </button>
-            <button
-              onClick={handleReset}
-              className="panel-btn panel-btn-ghost"
-            >
-              <RotateCcw size={16} /> Réinitialiser
-            </button>
-            <button
-              onClick={onClose}
-              className="panel-btn panel-btn-icon"
-              aria-label="Fermer"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="panel-btn panel-btn-icon panel-btn-close"
+            aria-label="Fermer"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-8 py-8 space-y-8">
-        <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 panel-card rounded-3xl p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-              <h3 className="font-semibold text-white text-lg flex items-center gap-3">
-                <span className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30">
+      <div className="flex-1 overflow-y-auto custom-scrollbar panel-no-scroll px-14 py-12 space-y-12">
+        <section className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+          <div className="xl:col-span-2 panel-card panel-card--roomy rounded-3xl">
+            <div className="flex flex-wrap items-center justify-between gap-6 mb-8 panel-pad-inline">
+              <h3 className="font-semibold text-white text-xl flex items-center gap-5 section-title">
+                <span className="panel-icon-wrap">
                   <Activity size={18} className="text-cyan-300" />
                 </span>
-                Profil de vulnérabilité
+                Lecture des vulnérabilités du site
               </h3>
               {selectedSmr ? (
                 <button
                   onClick={() => setSelectedSmr(null)}
                   className="panel-pill panel-pill--warning panel-pill--normal"
                 >
-                  Comparaison: {selectedSmr} • Effacer
+                  Comparaison: {selectedSmr} â€¢ Effacer
                 </button>
               ) : (
                 <span className="text-xs text-cyan-300/70">Cliquez sur un SMR pour comparer</span>
               )}
             </div>
-            <div className="panel-card-soft h-80 w-full rounded-2xl p-4">
-              {radarData.length > 0 ? (
+            <p className="text-sm text-slate-400 panel-pad-inline -mt-2">
+              Cette vue synthétise les forces et fragilités du site, puis compare les SMR au besoin local.
+            </p>
+            {radarData.length > 0 ? (
+              <div className="panel-card-soft panel-card--roomy h-80 w-full rounded-2xl">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
                     <PolarGrid stroke="#0e7490" strokeDasharray="3" />
@@ -287,29 +289,24 @@ export default function SimulationPanel({ island, onClose }) {
                     <Legend wrapperStyle={{ paddingTop: '15px', fontSize: '12px', color: '#a1f5ff' }} />
                   </RadarChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-slate-500">
-                  <div className="text-center">
-                    <Activity className="mx-auto mb-2 animate-spin opacity-20" size={28} />
-                    <p className="text-sm">Chargement...</p>
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 panel-pad-inline mt-2">Chargement du radar…</p>
+            )}
           </div>
 
-          <div className="space-y-4">
-            <div className="panel-card-soft rounded-2xl p-5">
-              <div className="flex items-center justify-between">
+          <div className="space-y-7">
+            <div className="panel-card-soft panel-card--roomy rounded-2xl">
+              <div className="flex items-center justify-between panel-pad-inline">
                 <div>
                   <p className="panel-kicker text-cyan-300/70">Score moyen</p>
                   <p className="text-2xl font-bold text-white mt-2">{averageScore}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+                <div className="panel-icon-wrap">
                   <Activity size={20} className="text-cyan-300" />
                 </div>
               </div>
-              <div className="mt-4 h-2 rounded-full bg-slate-800/80">
+              <div className="mt-5 h-2 rounded-full bg-slate-800/80 panel-pad-inline">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500"
                   style={{ width: `${Math.min(100, (averageScore / 5) * 100)}%` }}
@@ -317,8 +314,8 @@ export default function SimulationPanel({ island, onClose }) {
               </div>
             </div>
 
-            <div className="panel-card-soft rounded-2xl p-5">
-              <div className="flex items-center justify-between">
+            <div className="panel-card-soft panel-card--roomy rounded-2xl">
+              <div className="flex items-center justify-between panel-pad-inline">
                 <div>
                   <p className="panel-kicker text-cyan-300/70">Critères critiques</p>
                   <p className={`text-2xl font-bold mt-2 ${criticalCount > 0 ? 'text-red-300' : 'text-emerald-300'}`}>
@@ -326,39 +323,39 @@ export default function SimulationPanel({ island, onClose }) {
                   </p>
                 </div>
                 <div
-                  className={`p-3 rounded-xl border ${
+                  className={`panel-icon-wrap ${
                     criticalCount > 0 ? 'bg-red-500/10 border-red-400/40' : 'bg-emerald-500/10 border-emerald-400/40'
                   }`}
                 >
                   <AlertTriangle size={20} className={criticalCount > 0 ? 'text-red-300' : 'text-emerald-300'} />
                 </div>
               </div>
-              <p className="mt-3 text-xs text-slate-400">
+              <p className="mt-4 text-xs text-slate-400 panel-pad-inline">
                 Scores inférieurs à 2/5 sur le profil site.
               </p>
             </div>
 
-            <div className="panel-card-soft rounded-2xl p-5">
-              <div className="flex items-center justify-between">
+            <div className="panel-card-soft panel-card--roomy rounded-2xl">
+              <div className="flex items-center justify-between panel-pad-inline">
                 <div>
                   <p className="panel-kicker text-cyan-300/70">Technologies analysées</p>
                   <p className="text-2xl font-bold text-white mt-2">{smrCount}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+                <div className="panel-icon-wrap">
                   <IconBarChart size={20} className="text-cyan-300" />
                 </div>
               </div>
-              <p className="mt-3 text-xs text-slate-400">
+              <p className="mt-4 text-xs text-slate-400 panel-pad-inline">
                 Cliquez sur un résultat pour comparer au radar.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="space-y-6">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-xl font-bold text-white flex items-center gap-3">
-              <span className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30">
+        <section className="space-y-9">
+          <div className="flex items-center justify-between gap-3 panel-pad-inline">
+            <h3 className="text-xl font-bold text-white flex items-center gap-5 section-title">
+              <span className="panel-icon-wrap">
                 <IconBarChart size={20} className="text-cyan-300" />
               </span>
               Résultats & classement
@@ -371,33 +368,33 @@ export default function SimulationPanel({ island, onClose }) {
           </div>
 
           {!results && (
-            <div className="panel-card-soft rounded-2xl p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
-                  <Activity size={18} className="text-cyan-300" />
-                </div>
+            <div className="panel-card-soft panel-card--roomy rounded-2xl">
+              <div className="flex items-start justify-between gap-6 panel-pad-inline">
                 <div>
                   <h4 className="text-base font-semibold text-white">Lancer la simulation</h4>
                   <p className="text-sm text-slate-400 mt-1">
                     Ajustez les scores et lancez le calcul pour afficher le classement.
                   </p>
                 </div>
+                <div className="panel-icon-wrap">
+                  <Activity size={18} className="text-cyan-300" />
+                </div>
               </div>
             </div>
           )}
 
           {results && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div
-                className={`p-5 rounded-2xl border flex items-start gap-4 shadow-lg ${
+                className={`panel-status-banner rounded-2xl border flex items-start gap-4 shadow-lg panel-pad-inline ${
                   results.is_nogo
-                    ? 'bg-red-500/10 border-red-500/40 text-red-200'
-                    : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200'
+                    ? 'panel-status-banner--danger'
+                    : 'panel-status-banner--success'
                 }`}
               >
                 <div
-                  className={`p-3 rounded-xl flex-shrink-0 ${
-                    results.is_nogo ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'
+                  className={`panel-status-icon ${
+                    results.is_nogo ? 'panel-status-icon--danger' : 'panel-status-icon--success'
                   }`}
                 >
                   {results.is_nogo ? <AlertTriangle size={22} /> : <CheckCircle size={22} />}
@@ -414,8 +411,8 @@ export default function SimulationPanel({ island, onClose }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <div className="xl:col-span-2 panel-card rounded-2xl p-6">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-9">
+                <div className="xl:col-span-2 panel-card panel-card--roomy rounded-2xl">
                   <ResponsiveContainer width="100%" height={320}>
                     <BarChart
                       data={results.ranking.slice(0, 12)}
@@ -431,7 +428,7 @@ export default function SimulationPanel({ island, onClose }) {
                         width={120}
                         tick={{ fontSize: 11, fontWeight: 500, fill: '#a1f5ff' }}
                       />
-                      <Tooltip content={<CustomTooltip />} cursor={{ fill: '#0e7490' }} />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(34, 211, 238, 0.08)' }} />
                       <Bar dataKey="score" radius={[0, 8, 8, 0]} barSize={20}>
                         {results.ranking.map((entry, index) => (
                           <Cell
@@ -452,9 +449,9 @@ export default function SimulationPanel({ island, onClose }) {
                   </p>
                 </div>
 
-                <div className="panel-card-soft rounded-2xl p-5">
+                <div className="panel-card-soft panel-card--roomy rounded-2xl">
                   <h4 className="text-sm font-semibold text-cyan-200 uppercase tracking-[0.2em]">Top 3</h4>
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-5 space-y-4">
                     {results.ranking.slice(0, 3).map((entry, index) => (
                       <div
                         key={entry.technologie}
@@ -481,23 +478,23 @@ export default function SimulationPanel({ island, onClose }) {
           )}
         </section>
 
-        <section className="border-t border-cyan-500/10 pt-8 pb-20 space-y-6">
-          <h3 className="text-xl font-bold text-white flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30">
+        <section className="border-t border-cyan-500/10 pt-12 pb-28 space-y-8">
+          <h3 className="text-xl font-bold text-white flex items-center gap-5 section-title panel-pad-inline">
+            <span className="panel-icon-wrap">
               <SlidersHorizontal size={20} className="text-cyan-300" />
             </span>
             Configuration
           </h3>
 
-          <div className="panel-card rounded-2xl p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div className="panel-card panel-card--roomy rounded-2xl">
+            <div className="flex flex-wrap items-center justify-between gap-5 mb-5 panel-pad-inline">
               <div>
-                <label className="font-semibold text-white text-base">Sensibilité (Alpha)</label>
+                <label className="font-semibold text-white text-base">SensibilitÃ© (Alpha)</label>
                 <p className="text-xs text-cyan-300/60 mt-1">
-                  0 = besoins dominants · 1 = poids de base uniquement
+                  0 = besoins dominants Â· 1 = poids de base uniquement
                 </p>
               </div>
-              <span className="text-2xl font-bold text-cyan-200 bg-slate-900/50 px-4 py-2 rounded-lg border border-cyan-500/40 font-mono">
+              <span className="text-2xl font-bold text-cyan-200 bg-slate-900/50 px-5 py-2 rounded-lg border border-cyan-500/40 font-mono">
                 {alpha.toFixed(1)}
               </span>
             </div>
@@ -508,31 +505,31 @@ export default function SimulationPanel({ island, onClose }) {
               step="0.1"
               value={alpha}
               onChange={(e) => setAlpha(parseFloat(e.target.value))}
-              className="w-full h-2 bg-cyan-600/30 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-2 bg-cyan-600/30 rounded-lg appearance-none cursor-pointer panel-pad-inline"
               style={{
                 accentColor: '#22d3ee',
               }}
             />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-5">
             {themeStats.map((theme) => (
               <div
                 key={theme.theme}
-                className="panel-card-soft rounded-2xl overflow-hidden transition-all"
+                className="panel-card-soft panel-card--roomy rounded-2xl overflow-hidden transition-all"
               >
                 <button
                   onClick={() => toggleTheme(theme.theme)}
-                  className="w-full flex flex-wrap justify-between items-center gap-4 p-5 hover:bg-slate-800/50 transition-all"
+                  className="w-full flex flex-wrap justify-between items-center gap-5 p-7 hover:bg-slate-800/50 transition-all"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-5">
                     <div className="w-1 h-10 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full" />
                     <div>
                       <span className="font-semibold text-sm text-cyan-200 uppercase tracking-tight">
                         {theme.theme}
                       </span>
                       <div className="text-xs text-slate-400 mt-1">
-                        {theme.count} critères · moyenne {theme.avg}/5
+                        {theme.count} critères Â· moyenne {theme.avg}/5
                       </div>
                     </div>
                   </div>
@@ -551,11 +548,11 @@ export default function SimulationPanel({ island, onClose }) {
                 </button>
 
                 {openTheme === theme.theme && (
-                  <div className="panel-inset p-4 space-y-4 animate-fade-in">
+                  <div className="panel-inset p-6 space-y-5 animate-fade-in">
                     {(criteriaByTheme[theme.theme] || []).map((crit) => (
                       <div
                         key={crit.Code}
-                        className="panel-row rounded-xl p-4"
+                        className="panel-row rounded-xl p-6"
                       >
                         <div className="flex justify-between items-end mb-3">
                           <div className="flex items-center gap-3 flex-1">
@@ -611,3 +608,6 @@ export default function SimulationPanel({ island, onClose }) {
     </div>
   );
 }
+
+
+
