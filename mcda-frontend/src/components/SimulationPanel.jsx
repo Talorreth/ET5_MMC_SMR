@@ -185,6 +185,7 @@ export default function SimulationPanel({ island, onClose }) {
   const [baseWeights, setBaseWeights] = useState({});
   const [scenario, setScenario] = useState('classic');
   const [scenarioMenuOpen, setScenarioMenuOpen] = useState(false);
+  const [scenarioScores, setScenarioScores] = useState({});
   const [alpha, setAlpha] = useState(0.3);
   const [results, setResults] = useState(null);
   const [selectedSmr, setSelectedSmr] = useState(null);
@@ -227,6 +228,26 @@ export default function SimulationPanel({ island, onClose }) {
     setResults(null);
     setSelectedSmr(null);
   }, [island.id, scenario]);
+
+  useEffect(() => {
+    const fetchScenarioScores = async () => {
+      try {
+        const [classicRes, res2030, res2050] = await Promise.all([
+          axios.get(`${API_URL}/islands`, { params: { scenario: 'classic' } }),
+          axios.get(`${API_URL}/islands`, { params: { scenario: '2030' } }),
+          axios.get(`${API_URL}/islands`, { params: { scenario: '2050' } }),
+        ]);
+        setScenarioScores({
+          classic: classicRes.data || {},
+          '2030': res2030.data || {},
+          '2050': res2050.data || {},
+        });
+      } catch (error) {
+        console.error("Erreur chargement scénarios:", error);
+      }
+    };
+    fetchScenarioScores();
+  }, [island.id]);
 
   const radarData = useMemo(() => {
     if (!criteriaList.length || !Object.keys(scores).length) return [];
@@ -313,6 +334,40 @@ export default function SimulationPanel({ island, onClose }) {
   }, [criteriaList, scores]);
 
   const smrCount = useMemo(() => Object.keys(smrProfiles).length, [smrProfiles]);
+
+  const scenarioSummary = useMemo(() => {
+    const labels = {
+      classic: 'Classique',
+      '2030': '2030',
+      '2050': '2050',
+    };
+    const scenarios = ['classic', '2030', '2050'];
+    const classicScores = scenarioScores?.classic?.[island.id];
+    let classicAvg = null;
+    if (classicScores && criteriaList.length) {
+      const total = criteriaList.reduce((sum, crit) => sum + (classicScores[crit.Code] ?? 0), 0);
+      classicAvg = total / criteriaList.length;
+    }
+    return scenarios.map((key) => {
+      const scoresForIsland = scenarioScores?.[key]?.[island.id];
+      if (!scoresForIsland || !criteriaList.length) {
+        return { key, label: labels[key], avg: null, critical: null, hard: null, delta: null };
+      }
+      const total = criteriaList.reduce((sum, crit) => sum + (scoresForIsland[crit.Code] ?? 0), 0);
+      const avg = total / criteriaList.length;
+      const critical = criteriaList.filter((crit) => (scoresForIsland[crit.Code] ?? 0) < 2).length;
+      const hard = HARD_NO_GO_CODES.filter((code) => (scoresForIsland[code] ?? 0) < 2).length;
+      const delta = classicAvg !== null ? avg - classicAvg : null;
+      return {
+        key,
+        label: labels[key],
+        avg,
+        critical,
+        hard,
+        delta,
+      };
+    });
+  }, [scenarioScores, criteriaList, island.id]);
 
   const eligibleCount = useMemo(() => {
     if (!results) return smrCount;
@@ -535,6 +590,47 @@ export default function SimulationPanel({ island, onClose }) {
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar panel-no-scroll px-14 py-12 space-y-12">
+        <section className="panel-card-soft panel-card--roomy rounded-2xl scenario-compare">
+          <div className="scenario-compare-header">
+            <div>
+              <p className="scenario-compare-kicker">Comparaison des hypothèses</p>
+              <h3 className="scenario-compare-title">Classique vs 2030 vs 2050</h3>
+            </div>
+            <span className="scenario-compare-hint">Cliquez pour basculer</span>
+          </div>
+          <div className="scenario-compare-grid">
+            {scenarioSummary.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => handleScenarioSelect(item.key)}
+                className={`scenario-compare-card ${scenario === item.key ? 'scenario-compare-card--active' : ''}`}
+              >
+                <div className="scenario-compare-label">{item.label}</div>
+                <div className="scenario-compare-metrics">
+                  <div className="scenario-compare-metric">
+                    <span>Score moyen</span>
+                    <strong>{item.avg !== null ? item.avg.toFixed(2) : '--'}</strong>
+                    {item.delta !== null && item.key !== 'classic' && (
+                      <span className={`scenario-compare-delta ${item.delta >= 0 ? 'is-positive' : 'is-negative'}`}>
+                        {item.delta >= 0 ? '+' : ''}
+                        {item.delta.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="scenario-compare-metric">
+                    <span>Critiques</span>
+                    <strong>{item.critical ?? '--'}</strong>
+                  </div>
+                  <div className="scenario-compare-metric">
+                    <span>Hard No-Go</span>
+                    <strong>{item.hard ?? '--'}</strong>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
         <section className="grid grid-cols-1 xl:grid-cols-3 gap-10">
           <div className="xl:col-span-2 panel-card panel-card--roomy rounded-3xl">
             <div className="flex flex-wrap items-center justify-between gap-6 mb-8 panel-pad-inline">
