@@ -183,6 +183,8 @@ export default function SimulationPanel({ island, onClose }) {
   const [originalScores, setOriginalScores] = useState({});
   const [smrProfiles, setSmrProfiles] = useState({});
   const [baseWeights, setBaseWeights] = useState({});
+  const [scenario, setScenario] = useState('classic');
+  const [scenarioMenuOpen, setScenarioMenuOpen] = useState(false);
   const [alpha, setAlpha] = useState(0.3);
   const [results, setResults] = useState(null);
   const [selectedSmr, setSelectedSmr] = useState(null);
@@ -202,7 +204,7 @@ export default function SimulationPanel({ island, onClose }) {
       try {
         const [critRes, islandRes, smrRes, weightRes] = await Promise.all([
           axios.get(`${API_URL}/criteria`),
-          axios.get(`${API_URL}/islands`),
+          axios.get(`${API_URL}/islands`, { params: { scenario } }),
           axios.get(`${API_URL}/smrs`),
           axios.get(`${API_URL}/weights`),
         ]);
@@ -224,7 +226,7 @@ export default function SimulationPanel({ island, onClose }) {
     fetchData();
     setResults(null);
     setSelectedSmr(null);
-  }, [island.id]);
+  }, [island.id, scenario]);
 
   const radarData = useMemo(() => {
     if (!criteriaList.length || !Object.keys(scores).length) return [];
@@ -371,6 +373,19 @@ export default function SimulationPanel({ island, onClose }) {
       : 'Projet viable'
     : 'Simulation non lancée';
 
+  const scenarioLabel = scenario === 'classic' ? 'Classique' : scenario;
+
+  const scenarioOptions = [
+    { value: 'classic', label: 'Classique' },
+    { value: '2030', label: '2030' },
+    { value: '2050', label: '2050' },
+  ];
+
+  const handleScenarioSelect = (value) => {
+    setScenario(value);
+    setScenarioMenuOpen(false);
+  };
+
   const statusPillClass = results
     ? results.is_nogo
       ? 'panel-pill--danger'
@@ -402,12 +417,14 @@ export default function SimulationPanel({ island, onClose }) {
   );
 
   const handleCalculate = async () => {
+    setScenarioMenuOpen(false);
     setLoading(true);
     setSelectedSmr(null);
     try {
       const response = await axios.post(`${API_URL}/calculate`, {
         island_id: island.id,
         alpha,
+        scenario,
         overrides: scores,
       });
       setResults(response.data);
@@ -444,21 +461,45 @@ export default function SimulationPanel({ island, onClose }) {
               </span>
               <span className={`panel-pill ${statusPillClass}`}>{statusLabel}</span>
               <div className="panel-actions-left">
-                <button
-                  onClick={handleCalculate}
-                  disabled={loading}
-                  className="panel-btn panel-btn-primary"
-                >
-                  {loading ? (
-                    <>
-                      <Activity size={16} className="animate-spin" /> Calcul...
-                    </>
-                  ) : (
-                    <>
-                      <Play size={16} fill="currentColor" /> Lancer
-                    </>
+                <div className="launch-group">
+                  <button
+                    onClick={handleCalculate}
+                    disabled={loading}
+                    className="panel-btn panel-btn-primary"
+                  >
+                    {loading ? (
+                      <>
+                        <Activity size={16} className="animate-spin" /> Calcul...
+                      </>
+                    ) : (
+                      <>
+                        <Play size={16} fill="currentColor" /> Lancer
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="panel-btn panel-btn-ghost panel-btn-split"
+                    onClick={() => setScenarioMenuOpen((open) => !open)}
+                  >
+                    <ChevronDown size={14} />
+                    {scenarioLabel}
+                  </button>
+                  {scenarioMenuOpen && (
+                    <div className="scenario-menu">
+                      {scenarioOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={`scenario-option ${scenario === option.value ? 'scenario-option--active' : ''}`}
+                          onClick={() => handleScenarioSelect(option.value)}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   )}
-                </button>
+                </div>
                 <button
                   onClick={handleReset}
                   className="panel-btn panel-btn-ghost"

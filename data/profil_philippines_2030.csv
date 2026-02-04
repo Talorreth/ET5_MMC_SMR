@@ -1,0 +1,36 @@
+Thematique,Code,Critere,Score ile (0-5),Besoin (0-1),Poids base,Poids ajuste,Hard No-Go ?,Gate (seuil),,Parametres,
+S�ret�,GS,G�ologie / G�otechnique / Sismologie,2,0.60,0.227,0.163,Hard No-Go,OK,0.3,? (poids minimum),0.3
+S�ret�,PD,Densit� et distribution de la population,1,0.80,0.103,0.089,,,(5-score)/5,Besoin,(5-score)/5
+S�ret�,EM,Environnement (contraintes et impacts),2,0.60,0.110,0.079,,,poids_base*(?+(1-?)*Besoin),Poids ajust�,poids_base*(?+(1-?)*Besoin)
+S�ret�,CW,Eau de refroidissement / source froide,3,0.40,0.064,0.037,,,2,Seuil Hard No-Go (min),2
+S�ret�,MG,M�t�orologie,1,0.80,0.100,0.086,,,0,# Hard No-Go en �chec,0
+S�ret�,HG,Hydrologie,2,0.60,0.117,0.084,Hard No-Go,OK,GO : Hard No-Go satisfaits,D�cision (gates),GO : Hard No-Go satisfaits
+S�ret�,PF,Proximit� de dangers externes,3,0.40,0.084,0.049,Hard No-Go,OK,Voir la colonne I (Gate) pour identifier les crit�res Hard No-Go en �chec.,D�tail,Voir la colonne I (Gate) pour identifier les crit�res Hard No-Go en �chec.
+S�ret�,TG,Topographie,4,0.20,0.050,0.022,,,,,
+S�ret�,LU,Usage des sols / planification,3,0.40,0.031,0.018,Hard No-Go,OK,,,
+S�ret�,PW,Proximit� de zones humides,2,0.60,0.020,0.014,,,,,
+S�ret�,ER,Routes d��vacuation,1,0.80,0.096,0.083,Hard No-Go,OK,,,
+Social,SOC1,Acceptabilit� sociale,5,0.00,1.000,0.300,,,,,
+Social,SOC2,Capacit� institutionnelle locale,4,0.20,1.000,0.440,Hard No-Go,OK,,,
+Social,SOC3,Foncier / droits / �quit�,2,0.60,1.000,0.720,,,,,
+Social,SOC4,Impact sur activit�s cl�s,3,0.40,1.000,0.580,,,,,
+Social,SOC5,Retomb�es locales,5,0.00,1.000,0.300,,,,,
+Social,SOC6,Robustesse logistique chantier,4,0.20,1.000,0.440,,,,,
+Environnement,ENV1,Biodiversit� & aires prot�g�es,2,0.60,1.000,0.720,,,,,
+Environnement,ENV2,Milieu marin & rejets thermiques,3,0.40,1.000,0.580,,,,,
+Environnement,ENV3,Eau douce (ressource rare en �le),2,0.60,1.000,0.720,,,,,
+Environnement,ENV4,R�silience climatique � long terme,2,0.60,1.000,0.720,,,,,
+Environnement,ENV5,Artificialisation / emprise / paysage,4,0.20,1.000,0.440,,,,,
+Environnement,ENV6,D�chets & back-end,2,0.60,1.000,0.720,Hard No-Go,OK,,,
+�conomie & Syst�me,ECO1,Ad�quation puissance ? taille r�seau,5,0.00,1.000,0.300,,,,,
+�conomie & Syst�me,ECO2,Flexibilit� & services syst�me,5,0.00,1.000,0.300,,,,,
+�conomie & Syst�me,ECO3,CAPEX & risque planning,2,0.60,1.000,0.720,,,,,
+�conomie & Syst�me,ECO4,OPEX & maintenabilit�,4,0.20,1.000,0.440,,,,,
+�conomie & Syst�me,ECO5,Infrastructures � cr�er,4,0.20,1.000,0.440,,,,,
+�conomie & Syst�me,ECO6,Co-b�n�fices & valeur syst�me,5,0.00,1.000,0.300,,,,,
+G�opolitique,GEO1,Stabilit� politique & continuit� de projet,5,0.00,1.000,0.300,,,,,
+G�opolitique,GEO2,Maturit� r�glementaire & licensing,4,0.20,1.000,0.440,Hard No-Go,OK,,,
+G�opolitique,GEO3,D�pendance fournisseur & sanctions,2,0.60,1.000,0.720,,,,,
+G�opolitique,GEO4,S�curit� logistique & routes maritimes,1,0.80,1.000,0.860,,,,,
+G�opolitique,GEO5,Fuel cycle & back-end souverainet�,2,0.60,1.000,0.720,Hard No-Go,OK,,,
+G�opolitique,GEO6,Coop�ration r�gionale & assistance,4,0.20,1.000,0.440,,,,,
