@@ -112,32 +112,33 @@ export default function SimulationPanel({ island, onClose }) {
   return (
     <div className="simulation-panel-wrapper flex flex-col h-full w-full bg-slate-900 text-white font-sans relative overflow-hidden">
       
-      {/* HEADER FIXE - Dark mode avec accents cyan */}
-      <div className="px-6 py-5 border-b border-cyan-500/20 bg-slate-950/80 backdrop-blur-xl z-20 flex justify-between items-start shadow-lg">
-        <div>
-          <div className="flex items-center gap-2 text-cyan-400 mb-2">
-            <MapPin size={16} className="flex-shrink-0" />
-            <span className="text-xs font-bold uppercase tracking-wider">📍 Site Pilote</span>
+      {/* HEADER FIXE - Modern glassmorphism avec gradient */}
+      <div className="px-8 py-7 border-b border-cyan-500/10 bg-gradient-to-b from-slate-950/95 to-slate-900/50 backdrop-blur-xl z-20 flex justify-between items-start shadow-2xl">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 text-cyan-400 mb-3">
+            <MapPin size={14} className="flex-shrink-0" />
+            <span className="text-xs font-semibold uppercase tracking-widest opacity-75">📍 Site Pilote</span>
           </div>
-          <h2 className="text-3xl font-bold text-white leading-tight">{island.name}</h2>
+          <h2 className="text-4xl font-black text-white leading-tight bg-gradient-to-r from-white to-cyan-300 bg-clip-text text-transparent">{island.name}</h2>
         </div>
-        <button onClick={onClose} className="p-2.5 hover:bg-slate-800 active:bg-slate-700 rounded-lg transition-all text-slate-400 hover:text-cyan-400 hover:scale-110 duration-200 group">
-          <svg className="w-6 h-6 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button onClick={onClose} className="p-3 hover:bg-cyan-500/20 active:bg-cyan-500/30 rounded-xl transition-all text-slate-400 hover:text-cyan-300 hover:scale-110 duration-300 group border border-cyan-500/0 hover:border-cyan-500/20">
+          <svg className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8">
 
         {/* SECTION 1: RADAR & ACTION */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Radar Card */}
-            <div className="lg:col-span-2 bg-slate-800/50 rounded-2xl p-6 border border-cyan-500/20 relative shadow-md hover:shadow-lg hover:border-cyan-500/40 transition-all duration-300">
-                <div className="flex justify-between items-center mb-5">
-                    <h3 className="font-bold text-white text-base flex items-center gap-2">
-                        <div className="p-1.5 bg-cyan-500/20 rounded-lg border border-cyan-500/30">
-                            <Activity size={18} className="text-cyan-400"/>
+            <div className="lg:col-span-2 bg-gradient-to-br from-slate-800/60 to-slate-900/40 rounded-3xl p-8 border border-cyan-500/20 relative shadow-lg hover:shadow-2xl hover:border-cyan-500/40 transition-all duration-500 backdrop-blur-md group">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cyan-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                <div className="flex justify-between items-center mb-6 relative z-10">
+                    <h3 className="font-bold text-white text-lg flex items-center gap-3">
+                        <div className="p-2 bg-gradient-to-br from-cyan-500/40 to-cyan-500/20 rounded-xl border border-cyan-500/40 group-hover:border-cyan-500/60 transition-all duration-300">
+                            <Activity size={20} className="text-cyan-300"/>
                         </div>
                         Analyse de Vulnérabilité
                     </h3>
@@ -147,7 +148,7 @@ export default function SimulationPanel({ island, onClose }) {
                         </span>
                     )}
                 </div>
-                <div className="h-80 w-full bg-slate-900/50 rounded-xl p-3 border border-cyan-500/10">
+                <div className="h-80 w-full bg-slate-900/40 rounded-2xl p-4 border border-cyan-500/20 relative z-10">
                     {radarData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                         <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
@@ -172,16 +173,16 @@ export default function SimulationPanel({ island, onClose }) {
             </div>
 
             {/* Action Card */}
-            <div className="flex flex-col gap-3">
-                <div className="bg-gradient-to-br from-cyan-600 to-blue-700 text-white rounded-2xl p-6 shadow-lg shadow-cyan-500/20 flex flex-col justify-between h-full hover:shadow-cyan-500/30 transition-shadow duration-300 border border-cyan-500/30">
-                    <div>
-                        <h4 className="font-bold text-sm mb-2">Simulation MCDA</h4>
-                        <p className="text-cyan-100/70 text-xs leading-relaxed">Classement des 16 technologies SMR</p>
+            <div className="flex flex-col gap-4">
+                <div className="bg-gradient-to-br from-cyan-600/90 via-blue-600 to-blue-700 text-white rounded-3xl p-8 shadow-2xl shadow-cyan-500/30 flex flex-col justify-between h-full hover:shadow-cyan-500/40 transition-all duration-500 border border-cyan-400/30 group hover:border-cyan-300/50 relative overflow-hidden">
+                    <div className="relative z-10">
+                        <h4 className="font-bold text-base mb-3">Simulation MCDA</h4>
+                        <p className="text-cyan-50/60 text-sm leading-relaxed">Classement des 16 technologies SMR</p>
                     </div>
                     <button 
                         onClick={handleCalculate}
                         disabled={loading}
-                        className="w-full bg-white text-cyan-700 hover:bg-cyan-50 disabled:bg-slate-600 disabled:text-white font-bold py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg flex justify-center items-center gap-2 text-sm disabled:cursor-not-allowed"
+                        className="w-full bg-white/95 text-cyan-700 hover:bg-white disabled:bg-slate-700/60 disabled:text-slate-300 font-bold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-xl hover:scale-105 flex justify-center items-center gap-2 text-sm disabled:cursor-not-allowed disabled:scale-100 disabled:hover:shadow-lg relative z-10"
                     >
                         {loading ? (
                             <><Activity size={16} className="animate-spin"/> Calcul...</>
@@ -190,30 +191,30 @@ export default function SimulationPanel({ island, onClose }) {
                         )}
                     </button>
                 </div>
-                <button onClick={handleReset} className="w-full bg-slate-800 border-2 border-cyan-500/30 text-cyan-300 hover:bg-slate-700 hover:border-cyan-500/60 py-2.5 rounded-lg font-semibold flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md text-sm">
-                    <RotateCcw size={16}/> Réinitialiser
+                <button onClick={handleReset} className="w-full bg-slate-800/60 border-2 border-cyan-500/40 text-cyan-300 hover:bg-slate-700/80 hover:border-cyan-500/70 py-3 px-4 rounded-xl font-semibold flex justify-center items-center gap-2 transition-all shadow-md hover:shadow-lg hover:scale-105 text-sm relative z-10 backdrop-blur-sm group">
+                    <RotateCcw size={16} className="group-hover:rotate-180 transition-transform duration-500"/> Réinitialiser
                 </button>
             </div>
         </div>
 
         {/* SECTION 2: RÉSULTATS */}
         {results && (
-          <div className="animate-fade-in border-t border-cyan-500/20 pt-6">
-            <h3 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
-                <div className="p-1.5 bg-cyan-500/20 rounded-lg border border-cyan-500/30">
-                    <IconBarChart size={18} className="text-cyan-400"/>
+          <div className="animate-fade-in border-t border-cyan-500/10 pt-8">
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-cyan-500/40 to-cyan-500/20 rounded-xl border border-cyan-500/40">
+                    <IconBarChart size={20} className="text-cyan-300"/>
                 </div>
                 Résultats & Classement
             </h3>
 
             {/* Status Banner */}
-            <div className={`p-4 rounded-xl border-2 mb-5 flex items-start gap-3 shadow-sm transition-all ${results.is_nogo ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'}`}>
-                <div className={`p-2 rounded-lg flex-shrink-0 ${results.is_nogo ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                    {results.is_nogo ? <AlertTriangle size={20}/> : <CheckCircle size={20}/>}
+            <div className={`p-5 rounded-2xl border-2 mb-6 flex items-start gap-4 shadow-lg transition-all backdrop-blur-sm ${results.is_nogo ? 'bg-red-500/15 border-red-500/40 text-red-300' : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'}`}>
+                <div className={`p-3 rounded-lg flex-shrink-0 ${results.is_nogo ? 'bg-red-500/30 text-red-400' : 'bg-emerald-500/30 text-emerald-400'}`}>
+                    {results.is_nogo ? <AlertTriangle size={22}/> : <CheckCircle size={22}/>}
                 </div>
                 <div>
-                    <h4 className="font-bold text-sm mb-1">{results.is_nogo ? "Projet Critique (No-Go)" : "Projet Viable"}</h4>
-                    <p className="text-xs opacity-75 leading-snug">
+                    <h4 className="font-bold text-base mb-2">{results.is_nogo ? "Projet Critique (No-Go)" : "Projet Viable"}</h4>
+                    <p className="text-sm opacity-80 leading-relaxed">
                         {results.is_nogo 
                             ? `Contraintes bloquantes : ${results.nogo_reasons.join(", ")}` 
                             : "Tous les critères d'exclusion sont respectés."}
@@ -222,7 +223,7 @@ export default function SimulationPanel({ island, onClose }) {
             </div>
 
             {/* Chart */}
-            <div className="rounded-xl border border-cyan-500/20 p-4 shadow-md bg-slate-800/30 hover:shadow-lg transition-shadow">
+            <div className="rounded-2xl border border-cyan-500/20 p-6 shadow-lg hover:shadow-xl transition-all bg-gradient-to-br from-slate-800/40 to-slate-900/30 backdrop-blur-md">
                 <ResponsiveContainer width="100%" height={320}>
                 <BarChart 
                     data={results.ranking.slice(0, 12)} 
@@ -245,29 +246,29 @@ export default function SimulationPanel({ island, onClose }) {
                     </Bar>
                 </BarChart>
                 </ResponsiveContainer>
-                <p className="text-center text-xs text-cyan-300/60 mt-2 flex justify-center items-center gap-1 font-medium">
-                    <Info size={12}/> Cliquez pour comparer
+                <p className="text-center text-xs text-cyan-300/70 mt-3 flex justify-center items-center gap-2 font-medium">
+                    <Info size={14}/> Cliquez pour comparer
                 </p>
             </div>
           </div>
         )}
 
         {/* SECTION 3: PARAMÈTRES (ACCORDÉON) */}
-        <div className="border-t border-cyan-500/20 pt-6 pb-20">
-          <h3 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
-            <div className="p-1.5 bg-cyan-500/20 rounded-lg border border-cyan-500/30">
-                <SlidersHorizontal size={18} className="text-cyan-400"/>
+        <div className="border-t border-cyan-500/10 pt-8 pb-20">
+          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-cyan-500/40 to-cyan-500/20 rounded-xl border border-cyan-500/40">
+                <SlidersHorizontal size={20} className="text-cyan-300"/>
             </div>
             Configuration
           </h3>
           
-          <div className="bg-slate-800/50 p-4 rounded-xl border border-cyan-500/20 mb-5 shadow-sm">
-            <div className="flex justify-between items-center mb-3">
+          <div className="bg-gradient-to-br from-slate-800/60 to-slate-900/40 p-6 rounded-2xl border border-cyan-500/20 mb-6 shadow-md backdrop-blur-md hover:shadow-lg transition-shadow">
+            <div className="flex justify-between items-center mb-4">
                 <div>
-                    <label className="font-bold text-white text-sm">Sensibilité (Alpha)</label>
-                    <p className="text-xs text-cyan-300/60 mt-0.5">Poids du besoin</p>
+                    <label className="font-bold text-white text-base">Sensibilité (Alpha)</label>
+                    <p className="text-xs text-cyan-300/60 mt-1">Poids du besoin</p>
                 </div>
-                <span className="text-xl font-bold text-cyan-400 bg-slate-900/50 px-3 py-1 rounded-lg border border-cyan-500/30 font-mono text-sm">{alpha}</span>
+                <span className="text-2xl font-bold text-cyan-300 bg-slate-900/50 px-4 py-2 rounded-lg border border-cyan-500/40 font-mono">{alpha}</span>
             </div>
             <input 
                 type="range" min="0" max="1" step="0.1" 
@@ -280,35 +281,35 @@ export default function SimulationPanel({ island, onClose }) {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {Object.keys(radarData).map((themeName) => (
-               <div key={themeName} className="bg-slate-800/40 border border-cyan-500/20 rounded-lg overflow-hidden transition-all shadow-sm hover:shadow-md hover:border-cyan-500/40">
+               <div key={themeName} className="bg-gradient-to-br from-slate-800/40 to-slate-900/30 border border-cyan-500/20 rounded-2xl overflow-hidden transition-all shadow-md hover:shadow-lg hover:border-cyan-500/40 group">
                  <button 
                     onClick={() => toggleTheme(themeName)}
-                    className="w-full flex justify-between items-center p-4 hover:bg-slate-800/60 transition"
+                    className="w-full flex justify-between items-center p-5 hover:bg-slate-800/60 transition-all"
                  >
-                    <div className="flex items-center gap-2">
-                        <div className="w-0.5 h-5 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full"></div>
-                        <span className="font-bold text-xs text-cyan-300 uppercase tracking-tight">{themeName}</span>
+                    <div className="flex items-center gap-3">
+                        <div className="w-1 h-6 bg-gradient-to-b from-cyan-500 to-blue-600 rounded-full group-hover:h-7 transition-all"></div>
+                        <span className="font-bold text-sm text-cyan-300 uppercase tracking-tight">{themeName}</span>
                     </div>
-                    {openTheme === themeName ? <ChevronUp size={18} className="text-cyan-400"/> : <ChevronDown size={18} className="text-slate-500"/>}
+                    {openTheme === themeName ? <ChevronUp size={20} className="text-cyan-400"/> : <ChevronDown size={20} className="text-slate-500 group-hover:text-slate-300"/>}
                  </button>
                  
                  {openTheme === themeName && (
-                    <div className="p-3 bg-slate-900/50 border-t border-cyan-500/10 space-y-3 animate-fade-in">
+                    <div className="p-4 bg-slate-900/60 border-t border-cyan-500/10 space-y-4 animate-fade-in">
                         {criteriaList.filter(c => c.Thématique === themeName).map(crit => (
-                            <div key={crit.Code} className="bg-slate-800/50 rounded-lg p-3 border border-cyan-500/10 hover:border-cyan-500/30 hover:shadow-sm transition">
-                                <div className="flex justify-between items-end mb-2">
-                                    <div className="flex items-center gap-2 flex-1">
-                                        <span className="text-xs font-bold text-white bg-gradient-to-br from-cyan-600 to-blue-700 w-8 h-8 flex items-center justify-center rounded-md flex-shrink-0">{crit.Code}</span>
+                            <div key={crit.Code} className="bg-gradient-to-br from-slate-800/50 to-slate-900/30 rounded-xl p-4 border border-cyan-500/15 hover:border-cyan-500/40 hover:shadow-md transition-all">
+                                <div className="flex justify-between items-end mb-3">
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <span className="text-xs font-bold text-white bg-gradient-to-br from-cyan-600 to-blue-700 w-9 h-9 flex items-center justify-center rounded-lg flex-shrink-0 shadow-md">{crit.Code}</span>
                                         <div className="flex-1 min-w-0">
-                                            <span className="text-xs font-bold text-white block truncate" title={crit.Critère}>{crit.Critère}</span>
-                                            <span className="text-xs text-cyan-300/60"><span className={`font-bold ${scores[crit.Code] < 2 ? 'text-red-400' : 'text-cyan-400'}`}>{scores[crit.Code] || 0}</span>/5</span>
+                                            <span className="text-sm font-bold text-white block truncate" title={crit.Critère}>{crit.Critère}</span>
+                                            <span className="text-xs text-cyan-300/70"><span className={`font-bold ${scores[crit.Code] < 2 ? 'text-red-400' : 'text-cyan-400'}`}>{scores[crit.Code] || 0}</span>/5</span>
                                         </div>
                                         {crit.Explications && (
                                             <div className="group relative">
-                                                <Info size={14} className="text-slate-500 hover:text-cyan-400 cursor-help flex-shrink-0" />
-                                                <div className="absolute left-0 bottom-6 w-56 p-2 bg-slate-900 border border-cyan-500/30 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-50 leading-snug">
+                                                <Info size={16} className="text-slate-500 hover:text-cyan-400 cursor-help flex-shrink-0 transition-colors" />
+                                                <div className="absolute left-0 bottom-8 w-56 p-3 bg-slate-950 border border-cyan-500/40 text-white text-xs rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition pointer-events-none z-50 leading-snug">
                                                     {crit.Explications}
                                                 </div>
                                             </div>
@@ -319,7 +320,7 @@ export default function SimulationPanel({ island, onClose }) {
                                     type="range" min="0" max="5" step="1"
                                     value={scores[crit.Code] || 0}
                                     onChange={(e) => setScores(prev => ({...prev, [crit.Code]: parseInt(e.target.value)}))}
-                                    className={`w-full h-1.5 rounded-full appearance-none cursor-pointer transition`}
+                                    className={`w-full h-2 rounded-full appearance-none cursor-pointer transition`}
                                     style={{
                                         accentColor: scores[crit.Code] < 2 ? '#ef4444' : '#06b6d4'
                                     }}

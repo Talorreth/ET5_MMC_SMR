@@ -106,6 +106,22 @@ body {
   animation: fadeIn 0.5s ease-out forwards;
 }
 
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(6, 182, 212, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(6, 182, 212, 0.5); }
+}
+.animate-glow {
+  animation: glow 3s ease-in-out infinite;
+}
+
+@keyframes slideInDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-in-down {
+  animation: slideInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* SLIDERS PERSONNALISÉS (Look Apple/Moderne - Dark Mode) */
 input[type=range] {
   -webkit-appearance: none; 
