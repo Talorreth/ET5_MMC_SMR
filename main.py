@@ -69,11 +69,18 @@ class RankingItem(BaseModel):
     technologie: str
     score: float
 
+class DisqualifiedItem(BaseModel):
+    technologie: str
+    score: float
+    capex_score: Optional[float] = None
+    reason: str
+
 class CalculationResponse(BaseModel):
     island_id: str
     is_nogo: bool
     nogo_reasons: List[str]
     ranking: List[RankingItem]
+    disqualified: List[DisqualifiedItem] = []
 
 # --- ENDPOINTS ---
 
@@ -174,7 +181,22 @@ def calculate(req: CalculationRequest):
     # 6. Calcul des Scores SMR
     ranking = []
     total_weight = df_calc['Poids_ajustÃ©'].sum()
-    
+
+    # Règle spéciale Barbade : disqualification si CAPEX (ECO3) < 2
+    disqualified = []
+    disqualified_set = set()
+    disqualified_capex = {}
+    if req.island_id == "barbade":
+        capex_row = df_smr_global[df_smr_global['Code'] == 'ECO3']
+        if not capex_row.empty:
+            capex_row = capex_row.iloc[0]
+            for smr in smr_list_global:
+                capex_score = pd.to_numeric(capex_row.get(smr), errors='coerce')
+                capex_value = float(capex_score) if not pd.isna(capex_score) else 0.0
+                if capex_value < 2:
+                    disqualified_set.add(smr)
+                    disqualified_capex[smr] = capex_value
+
     if total_weight == 0:
         total_weight = 1 # Ã‰viter division par zÃ©ro
         
@@ -184,7 +206,20 @@ def calculate(req: CalculationRequest):
         
         # Moyenne pondÃ©rÃ©e
         weighted_score = np.dot(smr_scores, df_calc['Poids_ajustÃ©']) / total_weight
-        ranking.append(RankingItem(technologie=smr, score=round(weighted_score, 2)))
+        rounded_score = round(weighted_score, 2)
+
+        if smr in disqualified_set:
+            disqualified.append(
+                DisqualifiedItem(
+                    technologie=smr,
+                    score=rounded_score,
+                    capex_score=round(disqualified_capex.get(smr, 0.0), 2),
+                    reason="CAPEX (ECO3) < 2"
+                )
+            )
+            continue
+
+        ranking.append(RankingItem(technologie=smr, score=rounded_score))
         
     # Tri dÃ©croissant
     ranking.sort(key=lambda x: x.score, reverse=True)
@@ -193,7 +228,8 @@ def calculate(req: CalculationRequest):
         island_id=req.island_id,
         is_nogo=is_nogo,
         nogo_reasons=reasons,
-        ranking=ranking
+        ranking=ranking,
+        disqualified=disqualified
     )
 
 @app.get("/smrs")

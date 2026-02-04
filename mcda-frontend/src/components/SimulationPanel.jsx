@@ -17,17 +17,20 @@ import {
 import {
   BarChart,
   Bar,
+  CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   Cell,
+  LabelList,
   Radar,
   RadarChart,
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
   Legend,
+  ReferenceLine,
 } from 'recharts';
 
 const API_URL = "http://127.0.0.1:8000";
@@ -109,8 +112,49 @@ const fixText = (value) => {
   return text;
 };
 
+const formatSmrLabel = (value) =>
+  fixText(value)
+    .replace(/\s\(/g, '\u00A0(')
+    .replace(/\s/g, '\u00A0');
+
+const SmrTick = ({ x, y, payload }) => {
+  const label = formatSmrLabel(payload?.value ?? '');
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={-8}
+        y={0}
+        textAnchor="end"
+        dominantBaseline="central"
+        fill="#a1f5ff"
+        fontSize={11}
+        fontWeight={500}
+      >
+        {label}
+      </text>
+    </g>
+  );
+};
+
+const BarTrack = ({ x, y, width, height, payload }) => {
+  if (payload?.disqualified) return null;
+  return (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      rx={10}
+      ry={10}
+      fill="rgba(15, 23, 42, 0.55)"
+    />
+  );
+};
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
+    const isDisqualified = payload?.[0]?.payload?.disqualified;
+    const reason = payload?.[0]?.payload?.reason;
     return (
       <div className="bg-slate-950/95 p-3 border border-cyan-500/30 shadow-2xl rounded-xl text-xs">
         <p className="font-semibold text-cyan-300 mb-2">{fixText(label)}</p>
@@ -120,6 +164,11 @@ const CustomTooltip = ({ active, payload, label }) => {
             {fixText(entry.name)}: <span className="font-mono font-bold">{entry.value}</span>
           </p>
         ))}
+        {isDisqualified && (
+          <p className="mt-2 text-[11px] text-rose-200/80">
+            {reason ? fixText(reason) : 'Disqualifié'}
+          </p>
+        )}
       </div>
     );
   }
@@ -262,6 +311,40 @@ export default function SimulationPanel({ island, onClose }) {
 
   const smrCount = useMemo(() => Object.keys(smrProfiles).length, [smrProfiles]);
 
+  const eligibleCount = useMemo(() => {
+    if (!results) return smrCount;
+    return results.ranking.length;
+  }, [results, smrCount]);
+
+  const disqualifiedCount = results?.disqualified?.length ?? 0;
+
+  const criticalRatio = useMemo(() => {
+    if (!criteriaList.length) return 0;
+    return Math.min(100, (criticalCount / criteriaList.length) * 100);
+  }, [criticalCount, criteriaList]);
+
+  const techRatio = useMemo(() => {
+    if (!smrCount) return 0;
+    return Math.min(100, (eligibleCount / smrCount) * 100);
+  }, [eligibleCount, smrCount]);
+
+  const chartData = useMemo(() => {
+    if (!results) return [];
+    const eligible = results.ranking.map((item) => ({ ...item, disqualified: false }));
+    const disqualified = (results.disqualified || []).map((item) => ({ ...item, disqualified: true }));
+    return [...eligible, ...disqualified].sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.disqualified === b.disqualified) return 0;
+      return a.disqualified ? 1 : -1;
+    });
+  }, [results]);
+
+  const chartMax = useMemo(() => {
+    if (!chartData.length) return 5;
+    const maxScore = Math.max(...chartData.map((item) => Number(item.score) || 0));
+    return Math.min(5, Math.max(4.5, Math.ceil(maxScore * 10) / 10));
+  }, [chartData]);
+
   const statusLabel = results
     ? results.is_nogo
       ? 'No-Go'
@@ -350,6 +433,19 @@ export default function SimulationPanel({ island, onClose }) {
                 >
                   <RotateCcw size={16} /> Réinitialiser
                 </button>
+                <div className="alpha-control">
+                  <span className="alpha-label">Alpha</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={alpha}
+                    onChange={(event) => setAlpha(parseFloat(event.target.value))}
+                    className="alpha-slider"
+                  />
+                  <span className="alpha-value">{alpha.toFixed(1)}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -443,31 +539,42 @@ export default function SimulationPanel({ island, onClose }) {
           </div>
 
           <div className="space-y-7">
-            <div className="panel-card-soft panel-card--roomy rounded-2xl">
-              <div className="flex items-center justify-between panel-pad-inline">
-                <div>
-                  <p className="panel-kicker text-cyan-300/70">Score moyen</p>
-                  <p className="text-2xl font-bold text-white mt-2">{averageScore}</p>
+            <div className="panel-card-soft panel-card--roomy rounded-2xl stat-card stat-card--score">
+              <div className="stat-header panel-pad-inline">
+                <div className="stat-meta">
+                  <p className="stat-kicker">Score moyen</p>
+                  <div className="stat-value-row">
+                    <span className="stat-value">{averageScore}</span>
+                    <span className="stat-unit">/5</span>
+                  </div>
                 </div>
                 <div className="panel-icon-wrap">
                   <Activity size={20} className="text-cyan-300" />
                 </div>
               </div>
-              <div className="mt-5 h-2 rounded-full bg-slate-800/80 panel-pad-inline">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500"
-                  style={{ width: `${Math.min(100, (averageScore / 5) * 100)}%` }}
-                />
+              <div className="stat-meter panel-pad-inline">
+                <div className="stat-meter-track">
+                  <div
+                    className="stat-meter-fill"
+                    style={{ width: `${Math.min(100, (averageScore / 5) * 100)}%` }}
+                  />
+                </div>
+                <p className="stat-sub">Moyenne pondérée globale</p>
               </div>
             </div>
 
-            <div className="panel-card-soft panel-card--roomy rounded-2xl">
-              <div className="flex items-center justify-between panel-pad-inline">
-                <div>
-                  <p className="panel-kicker text-cyan-300/70">Critères critiques</p>
-                  <p className={`text-2xl font-bold mt-2 ${criticalCount > 0 ? 'text-red-300' : 'text-emerald-300'}`}>
-                    {criticalCount}
-                  </p>
+            <div className="panel-card-soft panel-card--roomy rounded-2xl stat-card stat-card--danger">
+              <div className="stat-header panel-pad-inline">
+                <div className="stat-meta">
+                  <p className="stat-kicker">Critères critiques</p>
+                  <div className="stat-value-row">
+                    <span className={`stat-value ${criticalCount > 0 ? 'text-red-300' : 'text-emerald-300'}`}>
+                      {criticalCount}
+                    </span>
+                    <span className="stat-unit">
+                      / {criteriaList.length || '-'}
+                    </span>
+                  </div>
                 </div>
                 <div
                   className={`panel-icon-wrap ${
@@ -477,24 +584,42 @@ export default function SimulationPanel({ island, onClose }) {
                   <AlertTriangle size={20} className={criticalCount > 0 ? 'text-red-300' : 'text-emerald-300'} />
                 </div>
               </div>
-              <p className="mt-4 text-xs text-slate-400 panel-pad-inline">
-                Scores inférieurs à 2/5 sur le profil site.
-              </p>
+              <div className="stat-meter panel-pad-inline">
+                <div className="stat-meter-track">
+                  <div
+                    className="stat-meter-fill stat-meter-fill--danger"
+                    style={{ width: `${criticalRatio}%` }}
+                  />
+                </div>
+                <p className="stat-sub">Scores &lt; 2/5 détectés</p>
+              </div>
             </div>
 
-            <div className="panel-card-soft panel-card--roomy rounded-2xl">
-              <div className="flex items-center justify-between panel-pad-inline">
-                <div>
-                  <p className="panel-kicker text-cyan-300/70">Technologies analysées</p>
-                  <p className="text-2xl font-bold text-white mt-2">{smrCount}</p>
+            <div className="panel-card-soft panel-card--roomy rounded-2xl stat-card stat-card--info">
+              <div className="stat-header panel-pad-inline">
+                <div className="stat-meta">
+                  <p className="stat-kicker">Technologies analysées</p>
+                  <div className="stat-value-row">
+                    <span className="stat-value">{eligibleCount}</span>
+                    <span className="stat-unit">/ {smrCount}</span>
+                  </div>
+                  {disqualifiedCount > 0 && (
+                    <span className="stat-alert">+ {disqualifiedCount} disqualifiés</span>
+                  )}
                 </div>
                 <div className="panel-icon-wrap">
                   <IconBarChart size={20} className="text-cyan-300" />
                 </div>
               </div>
-              <p className="mt-4 text-xs text-slate-400 panel-pad-inline">
-                Cliquez sur un résultat pour comparer au radar.
-              </p>
+              <div className="stat-meter panel-pad-inline">
+                <div className="stat-meter-track">
+                  <div
+                    className="stat-meter-fill stat-meter-fill--info"
+                    style={{ width: `${techRatio}%` }}
+                  />
+                </div>
+                <p className="stat-sub">Cliquez pour comparer au radar</p>
+              </div>
             </div>
           </div>
         </section>
@@ -510,6 +635,7 @@ export default function SimulationPanel({ island, onClose }) {
             {results && (
               <span className="text-xs text-slate-400">
                 {results.ranking.length} SMR classés
+                {results.disqualified?.length ? ` • ${results.disqualified.length} disqualifiés` : ''}
               </span>
             )}
           </div>
@@ -581,40 +707,115 @@ export default function SimulationPanel({ island, onClose }) {
                 </div>
               </div>
 
+              {results.disqualified?.length > 0 && (
+                <div className="panel-card-soft panel-card--roomy rounded-2xl">
+                  <div className="flex items-center justify-between gap-6 panel-pad-inline">
+                    <div>
+                      <p className="panel-kicker text-rose-200/70">SMR disqualifiés</p>
+                      <p className="text-sm text-rose-100/80 mt-2">
+                        CAPEX (ECO3) &lt; 2 pour le profil Barbade.
+                      </p>
+                    </div>
+                    <div className="panel-icon-wrap bg-red-500/10 border-red-400/40">
+                      <AlertTriangle size={18} className="text-red-300" />
+                    </div>
+                  </div>
+                  <div className="disqualified-list panel-pad-inline">
+                    {results.disqualified.map((item) => (
+                      <div key={item.technologie} className="disqualified-chip">
+                        <span className="disqualified-name">{fixText(item.technologie)}</span>
+                        <span className="disqualified-score">
+                          CAPEX {item.capex_score ?? item.capexScore ?? item.score}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-9">
                 <div className="xl:col-span-2 panel-card panel-card--roomy rounded-2xl">
-                  <ResponsiveContainer width="100%" height={320}>
-                    <BarChart
-                      data={results.ranking.slice(0, 12)}
-                      layout="vertical"
-                      margin={{ left: 120, right: 20, top: 5, bottom: 5 }}
-                      onClick={(data) => data?.activePayload && setSelectedSmr(data.activePayload[0].payload.technologie)}
-                      className="cursor-pointer"
-                    >
-                      <XAxis type="number" domain={[0, 5]} stroke="#0e7490" hide />
-                      <YAxis
-                        dataKey="technologie"
-                        type="category"
-                        width={120}
-                        tick={{ fontSize: 11, fontWeight: 500, fill: '#a1f5ff' }}
-                        tickFormatter={fixText}
-                      />
-                      <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(34, 211, 238, 0.08)' }} />
-                      <Bar dataKey="score" radius={[0, 8, 8, 0]} barSize={20}>
-                        {results.ranking.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={
-                              entry.technologie === selectedSmr
-                                ? '#f59e0b'
-                                : BAR_COLORS[index % BAR_COLORS.length]
-                            }
-                            className="transition-all duration-300 hover:opacity-80"
+                  <h4 className="chart-title">Classement des SMR (score global)</h4>
+                  <div className="smr-chart">
+                    <ResponsiveContainer width="100%" height={320}>
+                      <BarChart
+                        data={chartData}
+                        layout="vertical"
+                        margin={{ left: 120, right: 30, top: 28, bottom: 10 }}
+                        onClick={(data) => {
+                          const payload = data?.activePayload?.[0]?.payload;
+                          if (!payload || payload.disqualified) return;
+                          setSelectedSmr(payload.technologie);
+                        }}
+                        className="cursor-pointer"
+                        barCategoryGap={12}
+                      >
+                        <defs>
+                          <linearGradient id="smrGlow" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.95} />
+                            <stop offset="50%" stopColor="#38bdf8" stopOpacity={0.95} />
+                            <stop offset="100%" stopColor="#60a5fa" stopOpacity={0.95} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid stroke="rgba(56, 189, 248, 0.12)" strokeDasharray="4 6" horizontal={false} />
+                        <ReferenceLine
+                          x={4}
+                          stroke="rgba(56, 189, 248, 0.35)"
+                          strokeDasharray="6 6"
+                          label={{ value: 'Seuil 4/5', position: 'top', fill: '#7dd3fc', fontSize: 10, dy: -8 }}
+                        />
+                        <XAxis type="number" domain={[0, chartMax]} stroke="#0e7490" hide />
+                        <YAxis
+                          dataKey="technologie"
+                          type="category"
+                          width={170}
+                          tick={<SmrTick />}
+                          interval={0}
+                          tickLine={{ stroke: 'rgba(148, 163, 184, 0.45)' }}
+                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(34, 211, 238, 0.08)' }} />
+                        <Bar
+                          dataKey="score"
+                          radius={[0, 10, 10, 0]}
+                          barSize={22}
+                          background={<BarTrack />}
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={
+                                entry.disqualified
+                                  ? 'rgba(248, 113, 113, 0.35)'
+                                  : entry.technologie === selectedSmr
+                                    ? '#f59e0b'
+                                    : 'url(#smrGlow)'
+                              }
+                              stroke={entry.disqualified ? 'rgba(248, 113, 113, 0.75)' : 'transparent'}
+                              strokeDasharray={entry.disqualified ? '4 4' : '0'}
+                              className="transition-all duration-300 hover:opacity-80"
+                            />
+                          ))}
+                          <LabelList
+                            dataKey="score"
+                            position="right"
+                            formatter={(value) => Number(value).toFixed(2)}
+                            fill="#e2f8ff"
+                            fontSize={11}
                           />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="chart-legend">
+                    <span className="legend-item">
+                      <span className="legend-swatch legend-swatch--selected" />
+                      SMR sélectionné
+                    </span>
+                    <span className="legend-item">
+                      <span className="legend-swatch legend-swatch--disqualified" />
+                      Disqualifié (CAPEX)
+                    </span>
+                  </div>
                   <p className="text-center text-xs text-cyan-300/70 mt-3 flex justify-center items-center gap-2 font-medium">
                     <Info size={14} /> Cliquez pour comparer
                   </p>
