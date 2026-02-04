@@ -73,6 +73,8 @@ class DisqualifiedItem(BaseModel):
     technologie: str
     score: float
     capex_score: Optional[float] = None
+    power_score: Optional[float] = None
+    rule: Optional[str] = None
     reason: str
 
 class CalculationResponse(BaseModel):
@@ -185,17 +187,35 @@ def calculate(req: CalculationRequest):
     # Règle spéciale Barbade : disqualification si CAPEX (ECO3) < 2
     disqualified = []
     disqualified_set = set()
-    disqualified_capex = {}
+    disqualified_meta = {}
     if req.island_id == "barbade":
         capex_row = df_smr_global[df_smr_global['Code'] == 'ECO3']
-        if not capex_row.empty:
-            capex_row = capex_row.iloc[0]
+        power_row = df_smr_global[df_smr_global['Code'] == 'ECO1']
+        capex_row = capex_row.iloc[0] if not capex_row.empty else None
+        power_row = power_row.iloc[0] if not power_row.empty else None
+
+        if capex_row is not None or power_row is not None:
             for smr in smr_list_global:
-                capex_score = pd.to_numeric(capex_row.get(smr), errors='coerce')
-                capex_value = float(capex_score) if not pd.isna(capex_score) else 0.0
-                if capex_value < 2:
+                reasons = []
+                capex_value = None
+                power_value = None
+                if capex_row is not None:
+                    capex_score = pd.to_numeric(capex_row.get(smr), errors='coerce')
+                    capex_value = float(capex_score) if not pd.isna(capex_score) else 0.0
+                    if capex_value < 2:
+                        reasons.append("CAPEX (ECO3) < 2")
+                if power_row is not None:
+                    power_score = pd.to_numeric(power_row.get(smr), errors='coerce')
+                    power_value = float(power_score) if not pd.isna(power_score) else 0.0
+                    if power_value < 2:
+                        reasons.append("Adéquation puissance / taille réseau (ECO1) < 2")
+                if reasons:
                     disqualified_set.add(smr)
-                    disqualified_capex[smr] = capex_value
+                    disqualified_meta[smr] = {
+                        "capex": capex_value if capex_value is not None and capex_value < 2 else None,
+                        "power": power_value if power_value is not None and power_value < 2 else None,
+                        "reasons": reasons
+                    }
 
     if total_weight == 0:
         total_weight = 1 # Ã‰viter division par zÃ©ro
@@ -209,12 +229,23 @@ def calculate(req: CalculationRequest):
         rounded_score = round(weighted_score, 2)
 
         if smr in disqualified_set:
+            meta = disqualified_meta.get(smr, {})
+            reasons = meta.get("reasons", [])
+            capex_value = meta.get("capex")
+            power_value = meta.get("power")
+            rule = "capex"
+            if capex_value is not None and power_value is not None:
+                rule = "multi"
+            elif power_value is not None:
+                rule = "power"
             disqualified.append(
                 DisqualifiedItem(
                     technologie=smr,
                     score=rounded_score,
-                    capex_score=round(disqualified_capex.get(smr, 0.0), 2),
-                    reason="CAPEX (ECO3) < 2"
+                    capex_score=round(capex_value, 2) if capex_value is not None else None,
+                    power_score=round(power_value, 2) if power_value is not None else None,
+                    rule=rule,
+                    reason=" / ".join(reasons) if reasons else "Disqualifié"
                 )
             )
             continue

@@ -35,6 +35,7 @@ import {
 
 const API_URL = "http://127.0.0.1:8000";
 const BAR_COLORS = ['#22d3ee', '#38bdf8', '#60a5fa', '#a78bfa', '#f59e0b'];
+const HARD_NO_GO_CODES = ['GS', 'HG', 'PF', 'LU', 'ER', 'SOC2', 'ENV6', 'GEO2', 'GEO5'];
 
 const fixText = (value) => {
   if (value === null || value === undefined) return '';
@@ -331,13 +332,32 @@ export default function SimulationPanel({ island, onClose }) {
   const chartData = useMemo(() => {
     if (!results) return [];
     const eligible = results.ranking.map((item) => ({ ...item, disqualified: false }));
-    const disqualified = (results.disqualified || []).map((item) => ({ ...item, disqualified: true }));
+    const disqualified = (results.disqualified || []).map((item) => ({
+      ...item,
+      disqualified: true,
+      disqualifyType:
+        item.rule ||
+        ((item.power_score ?? item.powerScore) != null &&
+        (item.capex_score ?? item.capexScore) != null
+          ? 'multi'
+          : (item.power_score ?? item.powerScore) != null
+            ? 'power'
+            : 'capex'),
+    }));
     return [...eligible, ...disqualified].sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       if (a.disqualified === b.disqualified) return 0;
       return a.disqualified ? 1 : -1;
     });
   }, [results]);
+
+  const hasCapexDisqualified = chartData.some(
+    (item) => item.disqualified && (item.disqualifyType === 'capex' || item.disqualifyType === 'multi')
+  );
+
+  const hasPowerDisqualified = chartData.some(
+    (item) => item.disqualified && (item.disqualifyType === 'power' || item.disqualifyType === 'multi')
+  );
 
   const chartMax = useMemo(() => {
     if (!chartData.length) return 5;
@@ -357,17 +377,29 @@ export default function SimulationPanel({ island, onClose }) {
       : 'panel-pill--success'
     : 'panel-pill--warning';
 
-  const nogoItems = useMemo(() => {
-    if (!results?.nogo_reasons) return [];
-    return results.nogo_reasons.map((reason) => {
-      const cleaned = fixText(reason);
-      const match = cleaned.match(/^(.*)\(Score:\s*([0-9.]+)\)\s*$/);
-      if (!match) {
-        return { label: cleaned, score: null };
-      }
-      return { label: match[1].trim(), score: match[2] };
-    });
-  }, [results]);
+  const criteriaMap = useMemo(
+    () => Object.fromEntries(criteriaList.map((crit) => [crit.Code, crit])),
+    [criteriaList]
+  );
+
+  const hardNoGoCriteria = useMemo(
+    () =>
+      HARD_NO_GO_CODES.map((code) => {
+        const crit = criteriaMap[code];
+        const score = scores?.[code];
+        return {
+          code,
+          label: crit ? getCriteriaLabel(crit) : code,
+          score: Number.isFinite(score) ? score : null,
+        };
+      }),
+    [criteriaMap, scores]
+  );
+
+  const hardNoGoTriggered = useMemo(
+    () => hardNoGoCriteria.filter((item) => item.score !== null && item.score < 2),
+    [hardNoGoCriteria]
+  );
 
   const handleCalculate = async () => {
     setLoading(true);
@@ -683,22 +715,25 @@ export default function SimulationPanel({ island, onClose }) {
                         Des critères bloquants empêchent le projet d'être viable pour ce site.
                       </p>
                       <div className="nogo-count">
-                        {nogoItems.length} contraintes bloquantes
+                        {hardNoGoTriggered.length} contraintes bloquantes
                       </div>
+                      <p className="nogo-hard-label">Contraintes Hard No-Go</p>
                       <div className="nogo-list">
-                        {nogoItems.map((item, index) => (
-                          <div key={`${item.label}-${index}`} className="nogo-item">
-                            <span className="nogo-item-label">{item.label}</span>
-                            {item.score !== null && (
-                              <span className="nogo-item-score">Score {item.score}</span>
-                            )}
+                        {hardNoGoTriggered.map((item) => (
+                          <div key={item.code} className="nogo-item">
+                            <span className="nogo-item-label">
+                              {item.code} · {item.label}
+                            </span>
+                            <span className="nogo-item-score">
+                              {item.score !== null ? `Score ${item.score.toFixed(1)}` : 'Seuil < 2'}
+                            </span>
                           </div>
                         ))}
                       </div>
                     </>
                   ) : (
                     <>
-                      <h4 className="font-semibold text-base mb-2">Projet viable</h4>
+                      <h4 className="font-semibold text-base mb-2 status-title">Projet viable</h4>
                       <p className="text-sm opacity-80 leading-relaxed">
                         Tous les critères d'exclusion sont respectés.
                       </p>
@@ -708,27 +743,55 @@ export default function SimulationPanel({ island, onClose }) {
               </div>
 
               {results.disqualified?.length > 0 && (
-                <div className="panel-card-soft panel-card--roomy rounded-2xl">
-                  <div className="flex items-center justify-between gap-6 panel-pad-inline">
-                    <div>
-                      <p className="panel-kicker text-rose-200/70">SMR disqualifiés</p>
-                      <p className="text-sm text-rose-100/80 mt-2">
-                        CAPEX (ECO3) &lt; 2 pour le profil Barbade.
-                      </p>
-                    </div>
-                    <div className="panel-icon-wrap bg-red-500/10 border-red-400/40">
-                      <AlertTriangle size={18} className="text-red-300" />
-                    </div>
-                  </div>
-                  <div className="disqualified-list panel-pad-inline">
-                    {results.disqualified.map((item) => (
-                      <div key={item.technologie} className="disqualified-chip">
-                        <span className="disqualified-name">{fixText(item.technologie)}</span>
-                        <span className="disqualified-score">
-                          CAPEX {item.capex_score ?? item.capexScore ?? item.score}
-                        </span>
+                  <div className="panel-card-soft panel-card--roomy rounded-2xl">
+                    <div className="flex items-center justify-between gap-6 panel-pad-inline">
+                      <div>
+                        <p className="panel-kicker text-rose-200/70">SMR disqualifiés</p>
+                        <div className="disqualified-legend">
+                          <span className="disqualified-legend-title">Légende</span>
+                          <div className="disqualified-rules">
+                            <span className="disqualified-rule disqualified-rule--capex">
+                              <span className="disqualified-rule-dot disqualified-rule-dot--capex" />
+                              CAPEX (ECO3) &lt; 2
+                            </span>
+                            <span className="disqualified-rule disqualified-rule--power">
+                              <span className="disqualified-rule-dot disqualified-rule-dot--power" />
+                              Adéquation puissance / taille réseau (ECO1) &lt; 2
+                            </span>
+                          </div>
+                        </div>
+                        <div className="disqualified-separator" />
                       </div>
-                    ))}
+                      <div className="panel-icon-wrap bg-red-500/10 border-red-400/40">
+                        <AlertTriangle size={18} className="text-red-300" />
+                      </div>
+                    </div>
+                  <div className="disqualified-list panel-pad-inline">
+                    {results.disqualified.map((item) => {
+                      const capexValue = item.capex_score ?? item.capexScore;
+                      const powerValue = item.power_score ?? item.powerScore;
+                      const disqualifyType =
+                        item.rule ||
+                        (capexValue != null && powerValue != null
+                          ? 'multi'
+                          : powerValue != null
+                            ? 'power'
+                            : 'capex');
+                      const badgeParts = [];
+                      if (capexValue != null) badgeParts.push(`CAPEX ${capexValue}`);
+                      if (powerValue != null) badgeParts.push(`ECO1 ${powerValue}`);
+                      const badgeText = badgeParts.length
+                        ? badgeParts.join(' • ')
+                        : fixText(item.reason || 'Disqualifié');
+                      return (
+                        <div key={item.technologie} className={`disqualified-chip disqualified-chip--${disqualifyType}`}>
+                          <span className="disqualified-name">{fixText(item.technologie)}</span>
+                          <span className={`disqualified-score disqualified-score--${disqualifyType}`}>
+                            {badgeText}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -773,28 +836,43 @@ export default function SimulationPanel({ island, onClose }) {
                           interval={0}
                           tickLine={{ stroke: 'rgba(148, 163, 184, 0.45)' }}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(34, 211, 238, 0.08)' }} />
+                      <Tooltip content={<CustomTooltip />} cursor={false} />
                         <Bar
                           dataKey="score"
                           radius={[0, 10, 10, 0]}
                           barSize={22}
                           background={<BarTrack />}
                         >
-                          {chartData.map((entry, index) => (
+                        {chartData.map((entry, index) => {
+                          const disqualifyType = entry.disqualifyType || 'capex';
+                          const disqualifyFill =
+                            disqualifyType === 'power'
+                              ? 'rgba(167, 139, 250, 0.35)'
+                              : disqualifyType === 'multi'
+                                ? 'rgba(244, 114, 182, 0.35)'
+                                : 'rgba(248, 113, 113, 0.35)';
+                          const disqualifyStroke =
+                            disqualifyType === 'power'
+                              ? 'rgba(167, 139, 250, 0.75)'
+                              : disqualifyType === 'multi'
+                                ? 'rgba(244, 114, 182, 0.8)'
+                                : 'rgba(248, 113, 113, 0.75)';
+                          return (
                             <Cell
                               key={`cell-${index}`}
                               fill={
                                 entry.disqualified
-                                  ? 'rgba(248, 113, 113, 0.35)'
+                                  ? disqualifyFill
                                   : entry.technologie === selectedSmr
                                     ? '#f59e0b'
                                     : 'url(#smrGlow)'
                               }
-                              stroke={entry.disqualified ? 'rgba(248, 113, 113, 0.75)' : 'transparent'}
+                              stroke={entry.disqualified ? disqualifyStroke : 'transparent'}
                               strokeDasharray={entry.disqualified ? '4 4' : '0'}
                               className="transition-all duration-300 hover:opacity-80"
                             />
-                          ))}
+                          );
+                        })}
                           <LabelList
                             dataKey="score"
                             position="right"
@@ -811,10 +889,18 @@ export default function SimulationPanel({ island, onClose }) {
                       <span className="legend-swatch legend-swatch--selected" />
                       SMR sélectionné
                     </span>
-                    <span className="legend-item">
-                      <span className="legend-swatch legend-swatch--disqualified" />
-                      Disqualifié (CAPEX)
-                    </span>
+                    {hasCapexDisqualified && (
+                      <span className="legend-item">
+                        <span className="legend-swatch legend-swatch--disqualified" />
+                        Disqualifié (CAPEX)
+                      </span>
+                    )}
+                    {hasPowerDisqualified && (
+                      <span className="legend-item">
+                        <span className="legend-swatch legend-swatch--disqualified-power" />
+                        Disqualifié (ECO1)
+                      </span>
+                    )}
                   </div>
                   <p className="text-center text-xs text-cyan-300/70 mt-3 flex justify-center items-center gap-2 font-medium">
                     <Info size={14} /> Cliquez pour comparer
